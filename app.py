@@ -9,7 +9,7 @@ from streamlit_folium import st_folium
 
 
 # ============================================================
-# PAGE CONFIG
+# PAGE CONFIGURATION
 # ============================================================
 
 st.set_page_config(
@@ -21,7 +21,7 @@ st.set_page_config(
 
 
 # ============================================================
-# GLOBAL CSS
+# GLOBAL STYLE
 # ============================================================
 
 st.markdown(
@@ -30,20 +30,37 @@ st.markdown(
 
 .stApp {
     background:
-        radial-gradient(circle at 10% 10%, rgba(0,160,220,0.14), transparent 30%),
-        radial-gradient(circle at 90% 20%, rgba(0,100,180,0.12), transparent 30%),
-        linear-gradient(135deg, #03121e 0%, #061b2b 45%, #021019 100%);
+        radial-gradient(
+            circle at 10% 10%,
+            rgba(0, 150, 220, 0.14),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 90% 20%,
+            rgba(0, 100, 180, 0.12),
+            transparent 30%
+        ),
+        linear-gradient(
+            135deg,
+            #03121e 0%,
+            #061b2b 50%,
+            #021019 100%
+        );
     color: #f5f9ff;
 }
 
 .block-container {
+    max-width: 1400px;
     padding-top: 2rem;
     padding-bottom: 3rem;
-    max-width: 1400px;
 }
 
 h1, h2, h3, h4 {
     color: #f5f9ff !important;
+}
+
+p, label {
+    color: #e7f3fa !important;
 }
 
 .hero-title {
@@ -54,18 +71,18 @@ h1, h2, h3, h4 {
 }
 
 .hero-subtitle {
-    font-size: 15px;
     color: #9fc5dd;
+    font-size: 15px;
     letter-spacing: 1px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 div.stButton > button {
     width: 100%;
     min-height: 46px;
     border-radius: 14px;
-    border: 1px solid rgba(100,190,240,0.28);
-    background: rgba(10,39,58,0.72);
+    border: 1px solid rgba(100, 190, 240, 0.28);
+    background: rgba(10, 39, 58, 0.75);
     color: #dff5ff;
     font-weight: 700;
     transition: all 0.18s ease;
@@ -73,45 +90,39 @@ div.stButton > button {
 
 div.stButton > button:hover {
     transform: translateY(-2px);
-    border-color: rgba(100,210,255,0.8);
-    background: rgba(15,75,105,0.85);
+    border-color: rgba(100, 210, 255, 0.85);
+    background: rgba(15, 75, 105, 0.9);
     box-shadow:
-        0 0 18px rgba(0,190,255,0.22),
-        0 7px 20px rgba(0,0,0,0.25);
+        0 0 18px rgba(0, 190, 255, 0.22),
+        0 7px 20px rgba(0, 0, 0, 0.25);
 }
 
 div.stButton > button:active {
     transform: scale(0.97);
 }
 
-.card {
-    background: rgba(9,39,57,0.72);
-    border: 1px solid rgba(112,203,244,0.20);
-    border-radius: 20px;
-    padding: 22px;
-    margin-bottom: 18px;
-    box-shadow:
-        0 12px 35px rgba(0,0,0,0.22),
-        inset 0 1px 0 rgba(255,255,255,0.04);
-}
-
 div[data-testid="stMetric"] {
-    background: rgba(10,40,58,0.72);
-    border: 1px solid rgba(105,195,235,0.20);
+    background: rgba(9, 39, 57, 0.72);
+    border: 1px solid rgba(112, 203, 244, 0.20);
     border-radius: 17px;
     padding: 15px;
 }
 
 div[data-baseweb="select"] > div {
-    background: rgba(8,37,54,0.85);
-    border-color: rgba(100,190,230,0.30);
+    background: rgba(8, 37, 54, 0.90);
+    border-color: rgba(100, 190, 230, 0.30);
+}
+
+div[data-testid="stDataFrame"] {
+    border-radius: 15px;
+    overflow: hidden;
 }
 
 .footer {
     text-align: center;
     color: #7195aa;
     font-size: 12px;
-    padding-top: 25px;
+    padding-top: 20px;
 }
 
 </style>
@@ -121,10 +132,19 @@ div[data-baseweb="select"] > div {
 
 
 # ============================================================
-# DAM DATABASE
+# DEMO DAM DATABASE
+# ============================================================
+#
+# IMPORTANT:
+# These reservoir values are currently PROTOTYPE values.
+# They are NOT presented as live operational dam data.
+#
+# Later this dictionary will be replaced by an official
+# reservoir-data source.
 # ============================================================
 
 DAM_DATABASE = {
+
     "Idukki Dam": {
         "district": "Idukki",
         "lat": 9.8494,
@@ -248,20 +268,60 @@ DAM_DATABASE = {
 
 
 # ============================================================
-# LOCATION DATABASE
+# MONITORING LOCATIONS
 # ============================================================
 
 LOCATIONS = {
-    "Kochi": (9.9312, 76.2673),
-    "Idukki": (9.8500, 76.9700),
-    "Munnar": (10.0889, 77.0595),
-    "Kothamangalam": (10.0580, 76.6290),
-    "Thodupuzha": (9.8950, 76.7180),
-    "Kottayam": (9.5916, 76.5222),
-    "Pathanamthitta": (9.2648, 76.7870),
-    "Alappuzha": (9.4981, 76.3388),
-    "Thiruvananthapuram": (8.5241, 76.9366),
-    "Wayanad": (11.6854, 76.1320)
+
+    "Kochi": (
+        9.9312,
+        76.2673
+    ),
+
+    "Idukki": (
+        9.8500,
+        76.9700
+    ),
+
+    "Munnar": (
+        10.0889,
+        77.0595
+    ),
+
+    "Kothamangalam": (
+        10.0580,
+        76.6290
+    ),
+
+    "Thodupuzha": (
+        9.8950,
+        76.7180
+    ),
+
+    "Kottayam": (
+        9.5916,
+        76.5222
+    ),
+
+    "Pathanamthitta": (
+        9.2648,
+        76.7870
+    ),
+
+    "Alappuzha": (
+        9.4981,
+        76.3388
+    ),
+
+    "Thiruvananthapuram": (
+        8.5241,
+        76.9366
+    ),
+
+    "Wayanad": (
+        11.6854,
+        76.1320
+    )
 }
 
 
@@ -270,41 +330,70 @@ LOCATIONS = {
 # ============================================================
 
 if "page" not in st.session_state:
+
     st.session_state.page = "Dashboard"
 
 
 # ============================================================
-# BASIC FUNCTIONS
+# DISTANCE CALCULATION
 # ============================================================
 
-def distance_km(lat1, lon1, lat2, lon2):
+def distance_km(
+    lat1,
+    lon1,
+    lat2,
+    lon2
+):
 
-    radius = 6371
+    earth_radius = 6371
 
-    p1 = math.radians(lat1)
-    p2 = math.radians(lat2)
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
 
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
+    delta_lat = math.radians(
+        lat2 - lat1
+    )
+
+    delta_lon = math.radians(
+        lon2 - lon1
+    )
 
     a = (
-        math.sin(dp / 2) ** 2
-        + math.cos(p1)
-        * math.cos(p2)
-        * math.sin(dl / 2) ** 2
+        math.sin(delta_lat / 2) ** 2
+        +
+        math.cos(lat1_rad)
+        *
+        math.cos(lat2_rad)
+        *
+        math.sin(delta_lon / 2) ** 2
     )
 
-    return radius * 2 * math.atan2(
-        math.sqrt(a),
-        math.sqrt(1 - a)
+    return (
+        earth_radius
+        *
+        2
+        *
+        math.atan2(
+            math.sqrt(a),
+            math.sqrt(1 - a)
+        )
     )
 
 
-def nearby_dams(location_name, radius=120):
+# ============================================================
+# FIND NEARBY DAMS
+# ============================================================
 
-    lat, lon = LOCATIONS[location_name]
+def nearby_dams(
+    location_name,
+    radius=120
+):
 
-    result = []
+    lat, lon = LOCATIONS[
+        location_name
+    ]
+
+    results = []
 
     for name, dam in DAM_DATABASE.items():
 
@@ -317,14 +406,16 @@ def nearby_dams(location_name, radius=120):
 
         if distance <= radius:
 
-            item = dam.copy()
-            item["name"] = name
-            item["distance"] = distance
+            result = dam.copy()
 
-            result.append(item)
+            result["name"] = name
+
+            result["distance"] = distance
+
+            results.append(result)
 
     return sorted(
-        result,
+        results,
         key=lambda x: x["distance"]
     )
 
@@ -334,24 +425,38 @@ def nearby_dams(location_name, radius=120):
 # ============================================================
 
 @st.cache_data(ttl=600)
-def get_weather(lat, lon):
+def get_current_weather(
+    lat,
+    lon
+):
 
     try:
-        api_key = st.secrets["OPENWEATHER_API_KEY"]
+
+        api_key = st.secrets[
+            "OPENWEATHER_API_KEY"
+        ]
 
     except Exception:
 
         return {
             "success": False,
-            "error": "OPENWEATHER_API_KEY is not configured in Streamlit Secrets."
+            "error":
+                "OPENWEATHER_API_KEY is not configured."
         }
 
-    url = "https://api.openweathermap.org/data/2.5/weather"
+    url = (
+        "https://api.openweathermap.org/"
+        "data/2.5/weather"
+    )
 
     params = {
+
         "lat": lat,
+
         "lon": lon,
+
         "appid": api_key,
+
         "units": "metric"
     }
 
@@ -367,14 +472,16 @@ def get_weather(lat, lon):
 
             return {
                 "success": False,
-                "error": "OpenWeather API key is not active yet."
+                "error":
+                    "OpenWeather API key is not active yet."
             }
 
         if response.status_code == 429:
 
             return {
                 "success": False,
-                "error": "OpenWeather API request limit reached."
+                "error":
+                    "OpenWeather API request limit reached."
             }
 
         response.raise_for_status()
@@ -384,22 +491,44 @@ def get_weather(lat, lon):
         rainfall = 0.0
 
         if "rain" in data:
-            rainfall = data["rain"].get(
+
+            rainfall = data[
+                "rain"
+            ].get(
                 "1h",
                 0.0
             )
 
         return {
+
             "success": True,
-            "temperature": data["main"]["temp"],
-            "feels_like": data["main"]["feels_like"],
-            "humidity": data["main"]["humidity"],
-            "pressure": data["main"]["pressure"],
-            "wind": data["wind"]["speed"],
-            "rainfall": rainfall,
-            "description": data["weather"][0]["description"],
-            "icon": data["weather"][0]["icon"],
-            "city": data.get("name", "Unknown")
+
+            "temperature":
+                data["main"]["temp"],
+
+            "feels_like":
+                data["main"]["feels_like"],
+
+            "humidity":
+                data["main"]["humidity"],
+
+            "pressure":
+                data["main"]["pressure"],
+
+            "wind":
+                data["wind"]["speed"],
+
+            "rainfall":
+                rainfall,
+
+            "description":
+                data["weather"][0]["description"],
+
+            "city":
+                data.get(
+                    "name",
+                    "Unknown"
+                )
         }
 
     except requests.exceptions.RequestException as error:
@@ -411,29 +540,42 @@ def get_weather(lat, lon):
 
 
 # ============================================================
-# OPENWEATHER RAINFALL FORECAST
+# OPENWEATHER FORECAST
 # ============================================================
 
 @st.cache_data(ttl=600)
-def get_rainfall_forecast(lat, lon):
+def get_forecast(
+    lat,
+    lon
+):
 
     try:
 
-        api_key = st.secrets["OPENWEATHER_API_KEY"]
+        api_key = st.secrets[
+            "OPENWEATHER_API_KEY"
+        ]
 
     except Exception:
 
         return {
             "success": False,
-            "error": "OPENWEATHER_API_KEY is not configured."
+            "error":
+                "OPENWEATHER_API_KEY is not configured."
         }
 
-    url = "https://api.openweathermap.org/data/2.5/forecast"
+    url = (
+        "https://api.openweathermap.org/"
+        "data/2.5/forecast"
+    )
 
     params = {
+
         "lat": lat,
+
         "lon": lon,
+
         "appid": api_key,
+
         "units": "metric"
     }
 
@@ -449,52 +591,68 @@ def get_rainfall_forecast(lat, lon):
 
             return {
                 "success": False,
-                "error": "OpenWeather API key is not active yet."
+                "error":
+                    "OpenWeather API key is not active yet."
             }
 
         if response.status_code == 429:
 
             return {
                 "success": False,
-                "error": "OpenWeather API request limit reached."
+                "error":
+                    "OpenWeather API request limit reached."
             }
 
         response.raise_for_status()
 
         data = response.json()
 
-        forecast_rows = []
+        rows = []
 
-        for item in data.get("list", []):
+        for item in data.get(
+            "list",
+            []
+        ):
 
             rainfall = 0.0
 
             if "rain" in item:
 
-                rainfall = item["rain"].get(
+                rainfall = item[
+                    "rain"
+                ].get(
                     "3h",
                     0.0
                 )
 
-            forecast_rows.append(
-                {
-                    "datetime": pd.to_datetime(
+            rows.append({
+
+                "datetime":
+                    pd.to_datetime(
                         item["dt"],
                         unit="s"
                     ),
-                    "rainfall": rainfall,
-                    "temperature": item["main"]["temp"],
-                    "description": item["weather"][0]["description"]
-                }
-            )
+
+                "rainfall":
+                    rainfall,
+
+                "temperature":
+                    item["main"]["temp"],
+
+                "description":
+                    item["weather"][0]["description"]
+            })
 
         forecast_df = pd.DataFrame(
-            forecast_rows
+            rows
         )
 
         return {
+
             "success": True,
-            "data": forecast_df
+
+            "data":
+                forecast_df
         }
 
     except requests.exceptions.RequestException as error:
@@ -506,68 +664,154 @@ def get_rainfall_forecast(lat, lon):
 
 
 # ============================================================
-# AUTOMATIC RAINFALL SUMMARY
+# RAINFALL ANALYSIS
 # ============================================================
 
-def rainfall_summary(forecast_df):
+def analyse_rainfall(
+    forecast_df
+):
 
     if forecast_df.empty:
 
         return {
-            "rain_6h": 0,
-            "rain_12h": 0,
-            "rain_24h": 0,
-            "peak_3h": 0,
-            "trend": "Unknown"
+
+            "rain_6h": 0.0,
+
+            "rain_12h": 0.0,
+
+            "rain_24h": 0.0,
+
+            "peak_3h": 0.0,
+
+            "trend": "Unknown",
+
+            "intensity": "Unknown"
         }
 
-    now = forecast_df["datetime"].min()
+    start_time = forecast_df[
+        "datetime"
+    ].min()
 
-    six_hour = forecast_df[
-        forecast_df["datetime"]
-        <= now + pd.Timedelta(hours=6)
-    ]["rainfall"].sum()
+    six_hours = (
+        forecast_df[
+            forecast_df["datetime"]
+            <= start_time
+            + pd.Timedelta(hours=6)
+        ]["rainfall"]
+        .sum()
+    )
 
-    twelve_hour = forecast_df[
-        forecast_df["datetime"]
-        <= now + pd.Timedelta(hours=12)
-    ]["rainfall"].sum()
+    twelve_hours = (
+        forecast_df[
+            forecast_df["datetime"]
+            <= start_time
+            + pd.Timedelta(hours=12)
+        ]["rainfall"]
+        .sum()
+    )
 
-    twenty_four_hour = forecast_df[
-        forecast_df["datetime"]
-        <= now + pd.Timedelta(hours=24)
-    ]["rainfall"].sum()
+    twenty_four_hours = (
+        forecast_df[
+            forecast_df["datetime"]
+            <= start_time
+            + pd.Timedelta(hours=24)
+        ]["rainfall"]
+        .sum()
+    )
 
-    peak_3h = forecast_df["rainfall"].max()
+    peak_3h = forecast_df[
+        "rainfall"
+    ].max()
 
     first_half = forecast_df.head(
-        max(1, len(forecast_df) // 3)
+        max(
+            1,
+            len(forecast_df) // 3
+        )
     )["rainfall"].mean()
 
     second_half = forecast_df.tail(
-        max(1, len(forecast_df) // 3)
+        max(
+            1,
+            len(forecast_df) // 3
+        )
     )["rainfall"].mean()
 
     if second_half > first_half * 1.25:
+
         trend = "Increasing"
 
     elif second_half < first_half * 0.75:
+
         trend = "Decreasing"
 
     else:
+
         trend = "Stable"
 
+    if peak_3h >= 20:
+
+        intensity = "Very Heavy"
+
+    elif peak_3h >= 10:
+
+        intensity = "Heavy"
+
+    elif peak_3h >= 2.5:
+
+        intensity = "Moderate"
+
+    elif peak_3h > 0:
+
+        intensity = "Light"
+
+    else:
+
+        intensity = "No Significant Rain"
+
     return {
-        "rain_6h": round(six_hour, 1),
-        "rain_12h": round(twelve_hour, 1),
-        "rain_24h": round(twenty_four_hour, 1),
-        "peak_3h": round(peak_3h, 1),
-        "trend": trend
+
+        "rain_6h":
+            round(
+                six_hours,
+                1
+            ),
+
+        "rain_12h":
+            round(
+                twelve_hours,
+                1
+            ),
+
+        "rain_24h":
+            round(
+                twenty_four_hours,
+                1
+            ),
+
+        "peak_3h":
+            round(
+                peak_3h,
+                1
+            ),
+
+        "trend":
+            trend,
+
+        "intensity":
+            intensity
     }
 
 
 # ============================================================
-# WATER-LEVEL PREDICTION
+# WATER LEVEL PREDICTION
+# ============================================================
+#
+# Current version:
+# Prototype hydrological relationship.
+#
+# Future version:
+# Trained ML/hydrological model using historical data.
 # ============================================================
 
 def predict_water_level(
@@ -575,16 +819,16 @@ def predict_water_level(
     rainfall_24h
 ):
 
-    current_level = dam["water_level"]
+    current_level = dam[
+        "water_level"
+    ]
 
-    net_flow = (
+    net_flow = max(
+        0,
         dam["inflow"]
-        - dam["outflow"]
+        -
+        dam["outflow"]
     )
-
-    # Prototype conversion factor.
-    # This will later be replaced by a trained
-    # hydrological/ML model using historical data.
 
     flow_component = (
         net_flow / 1000
@@ -594,14 +838,16 @@ def predict_water_level(
         rainfall_24h / 100
     ) * 2.5
 
-    predicted = (
+    predicted_level = (
         current_level
-        + flow_component
-        + rainfall_component
+        +
+        flow_component
+        +
+        rainfall_component
     )
 
     return round(
-        predicted,
+        predicted_level,
         2
     )
 
@@ -610,17 +856,12 @@ def predict_water_level(
 # RELEASE PROBABILITY
 # ============================================================
 
-def release_probability(
+def calculate_release_probability(
     dam,
     predicted_level
 ):
 
-    current_score = min(
-        100,
-        dam["water_level"]
-    )
-
-    predicted_score = min(
+    level_score = min(
         100,
         predicted_level
     )
@@ -630,10 +871,17 @@ def release_probability(
         dam["inflow"] / 20
     )
 
+    current_score = min(
+        100,
+        dam["water_level"]
+    )
+
     probability = (
         current_score * 0.35
-        + predicted_score * 0.35
-        + inflow_score * 0.30
+        +
+        level_score * 0.35
+        +
+        inflow_score * 0.30
     )
 
     return min(
@@ -643,58 +891,187 @@ def release_probability(
 
 
 # ============================================================
-# WATER LEVEL TREND
+# AUTOMATIC FLOOD SCENARIO
+# ============================================================
+#
+# IMPORTANT:
+# This is a prototype scenario generator.
+# It does NOT predict that a dam will actually fail.
 # ============================================================
 
-def water_level_chart(dam_name):
+def generate_flood_scenario(
+    dam
+):
 
-    dam = DAM_DATABASE[dam_name]
+    water_level = dam[
+        "water_level"
+    ]
 
-    current = dam["water_level"]
+    inflow = dam[
+        "inflow"
+    ]
 
-    hours = np.arange(-12, 1)
+    outflow = dam[
+        "outflow"
+    ]
 
-    levels = np.linspace(
-        current - 3.0,
-        current,
-        len(hours)
+    net_flow = max(
+        0,
+        inflow - outflow
     )
 
-    return hours, levels
+    level_factor = min(
+        water_level / 100,
+        1.0
+    )
+
+    inflow_factor = min(
+        inflow / 2000,
+        1.0
+    )
+
+    scenario_score = (
+        level_factor * 0.60
+        +
+        inflow_factor * 0.40
+    )
+
+    if scenario_score >= 0.80:
+
+        scenario_class = "SEVERE"
+
+        breach_fraction = 0.75
+
+        development_time = 25
+
+    elif scenario_score >= 0.60:
+
+        scenario_class = "HIGH"
+
+        breach_fraction = 0.55
+
+        development_time = 40
+
+    elif scenario_score >= 0.40:
+
+        scenario_class = "MODERATE"
+
+        breach_fraction = 0.35
+
+        development_time = 60
+
+    else:
+
+        scenario_class = "LOW"
+
+        breach_fraction = 0.20
+
+        development_time = 90
+
+    peak_flow = (
+        outflow
+        +
+        inflow * breach_fraction
+        +
+        net_flow * 0.50
+    )
+
+    arrival_time = max(
+        15,
+        120 - breach_fraction * 70
+    )
+
+    population_factor = (
+        0.30
+        +
+        scenario_score * 0.70
+    )
+
+    affected_population = int(
+        5000
+        *
+        population_factor
+    )
+
+    return {
+
+        "score":
+            scenario_score,
+
+        "class":
+            scenario_class,
+
+        "breach_fraction":
+            breach_fraction,
+
+        "development_time":
+            development_time,
+
+        "peak_flow":
+            peak_flow,
+
+        "arrival_time":
+            arrival_time,
+
+        "affected_population":
+            affected_population
+    }
 
 
 # ============================================================
 # MAP
 # ============================================================
 
-def create_dam_map(location_name):
+def create_dam_map(
+    location_name
+):
 
-    lat, lon = LOCATIONS[location_name]
+    lat, lon = LOCATIONS[
+        location_name
+    ]
 
     map_object = folium.Map(
-        location=[lat, lon],
+        location=[
+            lat,
+            lon
+        ],
         zoom_start=8,
         tiles="CartoDB dark_matter"
     )
 
     folium.Circle(
-        location=[lat, lon],
+        location=[
+            lat,
+            lon
+        ],
         radius=120000,
         color="#25b9ff",
         fill=True,
         fill_opacity=0.05,
         weight=2
-    ).add_to(map_object)
+    ).add_to(
+        map_object
+    )
 
     folium.Marker(
-        [lat, lon],
-        tooltip=f"📍 {location_name}",
-        popup=f"Monitoring Location: {location_name}",
+        [
+            lat,
+            lon
+        ],
+        tooltip=(
+            f"📍 {location_name}"
+        ),
+        popup=(
+            f"Monitoring Location: "
+            f"{location_name}"
+        ),
         icon=folium.Icon(
             color="blue",
             icon="map-marker"
         )
-    ).add_to(map_object)
+    ).add_to(
+        map_object
+    )
 
     for name, dam in DAM_DATABASE.items():
 
@@ -708,41 +1085,53 @@ def create_dam_map(location_name):
         if distance <= 120:
 
             if dam["risk"] == "Moderate":
+
                 marker_color = "orange"
 
             elif dam["risk"] == "High":
+
                 marker_color = "red"
 
             else:
+
                 marker_color = "green"
 
-            popup = f"""
+            popup_text = f"""
             <b>{name}</b><br>
             Water Level: {dam['water_level']}<br>
             Inflow: {dam['inflow']} m³/s<br>
             Outflow: {dam['outflow']} m³/s<br>
             Distance: {distance:.1f} km<br>
-            Status: {dam['status']}
+            Data: {dam['status']}
             """
 
             folium.Marker(
-                [dam["lat"], dam["lon"]],
+                [
+                    dam["lat"],
+                    dam["lon"]
+                ],
                 tooltip=name,
                 popup=folium.Popup(
-                    popup,
+                    popup_text,
                     max_width=300
                 ),
                 icon=folium.Icon(
                     color=marker_color,
                     icon="tint"
                 )
-            ).add_to(map_object)
+            ).add_to(
+                map_object
+            )
 
     return map_object
 
 
 # ============================================================
 # HEADER
+# ============================================================
+#
+# Native Streamlit elements are deliberately used here.
+# This prevents the raw HTML problem from your screenshot.
 # ============================================================
 
 st.markdown(
@@ -764,30 +1153,57 @@ st.markdown(
 # ============================================================
 
 pages = [
-    ("🏠", "Dashboard"),
-    ("🏗️", "Dam Monitoring"),
-    ("🌦️", "Prediction"),
-    ("🌊", "Flood Simulation"),
-    ("🚨", "Emergency Center")
+
+    (
+        "🏠",
+        "Dashboard"
+    ),
+
+    (
+        "🏗️",
+        "Dam Monitoring"
+    ),
+
+    (
+        "🌦️",
+        "Prediction"
+    ),
+
+    (
+        "🌊",
+        "Flood Simulation"
+    ),
+
+    (
+        "🚨",
+        "Emergency Center"
+    )
 ]
 
-nav_columns = st.columns(
+
+navigation_columns = st.columns(
     len(pages)
 )
 
-for column, (icon, page_name) in zip(
-    nav_columns,
+
+for column, page_info in zip(
+    navigation_columns,
     pages
 ):
+
+    icon, page_name = page_info
 
     with column:
 
         if st.button(
             f"{icon}  {page_name}",
-            key=f"nav_{page_name}"
+            key=f"navigation_{page_name}"
         ):
 
-            st.session_state.page = page_name
+            st.session_state.page = (
+                page_name
+            )
+
             st.rerun()
 
 
@@ -800,11 +1216,13 @@ st.divider()
 
 if st.session_state.page == "Dashboard":
 
-    st.header("📊 System Dashboard")
+    st.header(
+        "📊 System Dashboard"
+    )
 
     st.write(
-        "Monitor nearby dams, rainfall and reservoir conditions "
-        "from one unified decision-support interface."
+        "Unified monitoring of reservoir conditions, "
+        "weather and nearby dams."
     )
 
     location = st.selectbox(
@@ -812,116 +1230,154 @@ if st.session_state.page == "Dashboard":
         list(LOCATIONS.keys())
     )
 
-    lat, lon = LOCATIONS[location]
+    lat, lon = LOCATIONS[
+        location
+    ]
 
     nearby = nearby_dams(
         location
     )
 
-    st.markdown(
-        f"""
-        <div class="card">
-        <b>📍 {location}</b><br><br>
-        Coordinates: {lat:.4f}, {lon:.4f}<br>
-        Monitoring radius: 120 km
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.info(
+        f"📍 Monitoring: {location}  •  "
+        f"Coordinates: {lat:.4f}, {lon:.4f}  •  "
+        f"Radius: 120 km"
     )
 
-    st.subheader("🌦️ Live Weather")
+    # --------------------------------------------------------
+    # WEATHER
+    # --------------------------------------------------------
 
-    weather = get_weather(
+    st.subheader(
+        "🌦️ Current Weather"
+    )
+
+    weather = get_current_weather(
         lat,
         lon
     )
 
     if weather["success"]:
 
-        cols = st.columns(5)
+        weather_columns = st.columns(
+            5
+        )
 
-        cols[0].metric(
+        weather_columns[0].metric(
             "🌡️ Temperature",
             f"{weather['temperature']:.1f} °C"
         )
 
-        cols[1].metric(
+        weather_columns[1].metric(
             "🌧️ Rainfall",
             f"{weather['rainfall']:.1f} mm"
         )
 
-        cols[2].metric(
+        weather_columns[2].metric(
             "💧 Humidity",
             f"{weather['humidity']}%"
         )
 
-        cols[3].metric(
+        weather_columns[3].metric(
             "💨 Wind",
             f"{weather['wind']:.1f} m/s"
         )
 
-        cols[4].metric(
+        weather_columns[4].metric(
             "🔵 Pressure",
             f"{weather['pressure']} hPa"
         )
 
         st.caption(
-            f"Condition: {weather['description'].title()} • "
+            f"Condition: "
+            f"{weather['description'].title()}  •  "
             "Weather data provided by OpenWeather"
         )
 
     else:
 
         st.warning(
-            f"🌦️ Weather unavailable: {weather['error']}"
+            f"🌦️ Weather unavailable: "
+            f"{weather['error']}"
         )
 
-    st.subheader("🏗️ Nearby Dams")
+    # --------------------------------------------------------
+    # NEARBY DAMS
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🏗️ Nearby Dams"
+    )
 
     if nearby:
 
-        dam_columns = st.columns(3)
+        dam_columns = st.columns(
+            3
+        )
 
-        for index, dam in enumerate(nearby):
+        for index, dam in enumerate(
+            nearby
+        ):
 
-            with dam_columns[index % 3]:
+            with dam_columns[
+                index % 3
+            ]:
 
-                st.markdown(
-                    f"""
-                    <div class="card">
-                    <h4>🏗️ {dam['name']}</h4>
-                    <b>Water Level:</b> {dam['water_level']:.1f}<br>
-                    <b>Inflow:</b> {dam['inflow']:.0f} m³/s<br>
-                    <b>Outflow:</b> {dam['outflow']:.0f} m³/s<br>
-                    <b>Rainfall:</b> {dam['rainfall']:.0f} mm<br>
-                    <b>Risk:</b> {dam['risk']}<br><br>
-                    <small>⚠️ {dam['status']} DATA</small>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
+                st.metric(
+                    f"🏗️ {dam['name']}",
+                    f"{dam['water_level']:.1f}",
+                    f"{dam['distance']:.1f} km away"
                 )
 
-    st.subheader("🗺️ Dam Monitoring Map")
+                st.caption(
+                    f"Inflow: "
+                    f"{dam['inflow']:.0f} m³/s  •  "
+                    f"Outflow: "
+                    f"{dam['outflow']:.0f} m³/s"
+                )
+
+                st.caption(
+                    f"Risk: {dam['risk']}  •  "
+                    f"Data: {dam['status']}"
+                )
+
+    # --------------------------------------------------------
+    # MAP
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🗺️ Dam Monitoring Map"
+    )
 
     st_folium(
-        create_dam_map(location),
+        create_dam_map(
+            location
+        ),
         width=None,
         height=500,
         returned_objects=[]
     )
 
-    st.subheader("📈 Nearby Reservoir Levels")
+    # --------------------------------------------------------
+    # WATER LEVEL COMPARISON
+    # --------------------------------------------------------
+
+    st.subheader(
+        "📈 Reservoir Level Comparison"
+    )
 
     if nearby:
 
         chart_df = pd.DataFrame({
+
             "Dam": [
-                d["name"]
-                for d in nearby
+                dam["name"]
+                for dam in nearby
             ],
+
             "Water Level": [
-                d["water_level"]
-                for d in nearby
+                dam["water_level"]
+                for dam in nearby
             ]
         })
 
@@ -935,9 +1391,9 @@ if st.session_state.page == "Dashboard":
         )
 
         fig.update_layout(
-            height=400,
             template="plotly_dark",
-            title="Current Water Level Comparison",
+            height=400,
+            title="Current Reservoir Levels",
             xaxis_title="Dam",
             yaxis_title="Water Level"
         )
@@ -954,46 +1410,58 @@ if st.session_state.page == "Dashboard":
 
 elif st.session_state.page == "Dam Monitoring":
 
-    st.header("🏗️ Dam Monitoring")
+    st.header(
+        "🏗️ Dam Monitoring"
+    )
 
     dam_name = st.selectbox(
-        "Select Dam",
+        "🏗️ Select Dam",
         list(DAM_DATABASE.keys())
     )
 
-    dam = DAM_DATABASE[dam_name]
+    dam = DAM_DATABASE[
+        dam_name
+    ]
 
-    st.info(
-        f"⚠️ Current reservoir figures are "
-        f"{dam['status'].lower()} values for the prototype. "
-        "They are not being presented as live operational control data."
+    st.warning(
+        "⚠️ Reservoir level, inflow, outflow and shutter "
+        "values are currently prototype data. They are "
+        "not live operational control values."
     )
 
-    cols = st.columns(4)
+    monitoring_columns = st.columns(
+        4
+    )
 
-    cols[0].metric(
+    monitoring_columns[0].metric(
         "💧 Water Level",
         f"{dam['water_level']:.1f}"
     )
 
-    cols[1].metric(
+    monitoring_columns[1].metric(
         "⬆️ Inflow",
         f"{dam['inflow']:.0f} m³/s"
     )
 
-    cols[2].metric(
+    monitoring_columns[2].metric(
         "⬇️ Outflow",
         f"{dam['outflow']:.0f} m³/s"
     )
 
-    cols[3].metric(
-        "🌧️ Rainfall",
+    monitoring_columns[3].metric(
+        "🌧️ Current Rainfall",
         f"{dam['rainfall']:.0f} mm"
     )
 
-    st.subheader("🚪 Shutter Status")
+    # --------------------------------------------------------
+    # SHUTTERS
+    # --------------------------------------------------------
 
-    shutter_cols = st.columns(
+    st.subheader(
+        "🚪 Shutter Status"
+    )
+
+    shutter_columns = st.columns(
         dam["total_shutters"]
     )
 
@@ -1001,22 +1469,38 @@ elif st.session_state.page == "Dam Monitoring":
         dam["total_shutters"]
     ):
 
-        if i < dam["open_shutters"]:
+        with shutter_columns[i]:
 
-            shutter_cols[i].success(
-                f"OPEN\n\n{dam['opening_percent']}%"
-            )
+            if i < dam["open_shutters"]:
 
-        else:
+                st.success(
+                    f"OPEN\n\n"
+                    f"{dam['opening_percent']}%"
+                )
 
-            shutter_cols[i].info(
-                "CLOSED"
-            )
+            else:
 
-    st.subheader("📈 Water-Level Trend")
+                st.info(
+                    "CLOSED"
+                )
 
-    hours, levels = water_level_chart(
-        dam_name
+    # --------------------------------------------------------
+    # HISTORICAL PROTOTYPE TREND
+    # --------------------------------------------------------
+
+    st.subheader(
+        "📈 Water-Level Trend"
+    )
+
+    hours = np.arange(
+        -12,
+        1
+    )
+
+    levels = np.linspace(
+        dam["water_level"] - 3,
+        dam["water_level"],
+        len(hours)
     )
 
     fig = go.Figure()
@@ -1032,7 +1516,7 @@ elif st.session_state.page == "Dam Monitoring":
 
     fig.update_layout(
         template="plotly_dark",
-        height=420,
+        height=400,
         xaxis_title="Hours",
         yaxis_title="Water Level"
     )
@@ -1049,11 +1533,14 @@ elif st.session_state.page == "Dam Monitoring":
 
 elif st.session_state.page == "Prediction":
 
-    st.header("🌧️ Water-Level Prediction")
+    st.header(
+        "🌧️ Water-Level Prediction"
+    )
 
     st.write(
         "HYDROSCOPE automatically analyses current weather "
-        "and forecast rainfall to estimate future reservoir behaviour."
+        "and forecast rainfall before estimating future "
+        "reservoir behaviour."
     )
 
     dam_name = st.selectbox(
@@ -1061,9 +1548,15 @@ elif st.session_state.page == "Prediction":
         list(DAM_DATABASE.keys())
     )
 
-    dam = DAM_DATABASE[dam_name]
+    dam = DAM_DATABASE[
+        dam_name
+    ]
 
-    forecast = get_rainfall_forecast(
+    # --------------------------------------------------------
+    # AUTOMATIC FORECAST
+    # --------------------------------------------------------
+
+    forecast = get_forecast(
         dam["lat"],
         dam["lon"]
     )
@@ -1071,72 +1564,64 @@ elif st.session_state.page == "Prediction":
     if not forecast["success"]:
 
         st.error(
-            f"Unable to obtain rainfall forecast: "
+            f"Unable to obtain automatic rainfall forecast: "
             f"{forecast['error']}"
         )
 
         st.stop()
 
-    forecast_df = forecast["data"]
+    forecast_df = forecast[
+        "data"
+    ]
 
-    summary = rainfall_summary(
+    rainfall = analyse_rainfall(
         forecast_df
     )
 
     # --------------------------------------------------------
-    # AUTOMATIC RAINFALL PREDICTION
+    # RAINFALL PREDICTION
     # --------------------------------------------------------
 
     st.subheader(
-        "🌦️ System-Predicted Rainfall"
+        "🤖 System-Predicted Rainfall"
     )
 
-    rain_cols = st.columns(4)
+    rainfall_columns = st.columns(
+        4
+    )
 
-    rain_cols[0].metric(
+    rainfall_columns[0].metric(
         "Next 6 Hours",
-        f"{summary['rain_6h']} mm"
+        f"{rainfall['rain_6h']} mm"
     )
 
-    rain_cols[1].metric(
+    rainfall_columns[1].metric(
         "Next 12 Hours",
-        f"{summary['rain_12h']} mm"
+        f"{rainfall['rain_12h']} mm"
     )
 
-    rain_cols[2].metric(
+    rainfall_columns[2].metric(
         "Next 24 Hours",
-        f"{summary['rain_24h']} mm"
+        f"{rainfall['rain_24h']} mm"
     )
 
-    rain_cols[3].metric(
+    rainfall_columns[3].metric(
         "Peak 3-Hour Rain",
-        f"{summary['peak_3h']} mm"
+        f"{rainfall['peak_3h']} mm"
     )
 
-    if summary["trend"] == "Increasing":
-
-        st.warning(
-            "⬆️ Rainfall trend detected: INCREASING"
-        )
-
-    elif summary["trend"] == "Decreasing":
-
-        st.success(
-            "⬇️ Rainfall trend detected: DECREASING"
-        )
-
-    else:
-
-        st.info(
-            "➡️ Rainfall trend detected: STABLE"
-        )
+    st.info(
+        f"🌧️ Predicted rainfall intensity: "
+        f"**{rainfall['intensity']}**  •  "
+        f"Trend: **{rainfall['trend']}**"
+    )
 
     # --------------------------------------------------------
-    # RAINFALL FORECAST GRAPH
+    # RAINFALL GRAPH
     # --------------------------------------------------------
 
     st.subheader(
-        "📈 Rainfall Forecast"
+        "📈 Automatic Rainfall Forecast"
     )
 
     rain_fig = go.Figure()
@@ -1152,8 +1637,7 @@ elif st.session_state.page == "Prediction":
     rain_fig.update_layout(
         template="plotly_dark",
         height=380,
-        title="Automatic Rainfall Forecast",
-        xaxis_title="Time",
+        xaxis_title="Forecast Time",
         yaxis_title="Rainfall (mm / 3h)"
     )
 
@@ -1163,47 +1647,51 @@ elif st.session_state.page == "Prediction":
     )
 
     # --------------------------------------------------------
-    # WATER LEVEL PREDICTION
+    # WATER LEVEL
     # --------------------------------------------------------
 
     predicted_level = predict_water_level(
         dam,
-        summary["rain_24h"]
+        rainfall["rain_24h"]
     )
 
-    probability = release_probability(
-        dam,
-        predicted_level
+    release_probability = (
+        calculate_release_probability(
+            dam,
+            predicted_level
+        )
     )
 
     st.subheader(
-        "🤖 HYDROSCOPE Prediction Engine"
+        "🔮 System Water-Level Prediction"
     )
 
-    prediction_cols = st.columns(3)
+    prediction_columns = st.columns(
+        3
+    )
 
-    prediction_cols[0].metric(
+    prediction_columns[0].metric(
         "💧 Current Level",
         f"{dam['water_level']:.1f}"
     )
 
-    prediction_cols[1].metric(
+    prediction_columns[1].metric(
         "🔮 Predicted Level",
         f"{predicted_level:.1f}"
     )
 
-    prediction_cols[2].metric(
+    prediction_columns[2].metric(
         "🚪 Release Probability",
-        f"{probability}%"
+        f"{release_probability}%"
     )
 
-    if probability >= 70:
+    if release_probability >= 70:
 
         st.error(
             "🚨 HIGH RELEASE POSSIBILITY"
         )
 
-    elif probability >= 45:
+    elif release_probability >= 45:
 
         st.warning(
             "⚠️ MODERATE RELEASE POSSIBILITY"
@@ -1216,14 +1704,14 @@ elif st.session_state.page == "Prediction":
         )
 
     # --------------------------------------------------------
-    # PREDICTED WATER LEVEL GRAPH
+    # WATER LEVEL FORECAST
     # --------------------------------------------------------
 
     st.subheader(
-        "📊 Predicted Reservoir Level"
+        "📊 24-Hour Reservoir Prediction"
     )
 
-    hours = np.arange(
+    prediction_hours = np.arange(
         0,
         25,
         3
@@ -1232,24 +1720,27 @@ elif st.session_state.page == "Prediction":
     predicted_levels = np.linspace(
         dam["water_level"],
         predicted_level,
-        len(hours)
+        len(prediction_hours)
     )
 
     level_fig = go.Figure()
 
     level_fig.add_trace(
         go.Scatter(
-            x=hours,
+            x=prediction_hours,
             y=predicted_levels,
             mode="lines+markers",
-            name="Predicted Water Level"
+            name="Predicted Level"
         )
     )
 
     level_fig.update_layout(
         template="plotly_dark",
         height=420,
-        title=f"24-Hour Water-Level Prediction — {dam_name}",
+        title=(
+            f"24-Hour Prediction — "
+            f"{dam_name}"
+        ),
         xaxis_title="Forecast Time (hours)",
         yaxis_title="Water Level"
     )
@@ -1260,39 +1751,66 @@ elif st.session_state.page == "Prediction":
     )
 
     # --------------------------------------------------------
-    # MODEL EXPLANATION
+    # SYSTEM LOGIC
     # --------------------------------------------------------
 
-    st.markdown(
-        """
-        <div class="card">
-        <b>🤖 How HYDROSCOPE generated this prediction</b><br><br>
+    st.subheader(
+        "🧠 HYDROSCOPE Decision Pipeline"
+    )
 
-        🌧️ Automatic weather forecast<br>
-        ↓<br>
-        🌧️ Predicted rainfall accumulation<br>
-        ↓<br>
-        💧 Current reservoir level<br>
-        ↓<br>
-        ⬆️ Inflow + ⬇️ outflow<br>
-        ↓<br>
-        🤖 Water-level prediction<br>
-        ↓<br>
-        🚪 Release-risk assessment
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.write(
+        "🌦️ Weather forecast"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🌧️ Automatic rainfall prediction"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "💧 Current reservoir condition"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "⬆️ Inflow + ⬇️ Outflow"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🤖 Water-level prediction"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🚪 Release-risk assessment"
     )
 
     st.warning(
-        "⚠️ The current water-level calculation is a prototype "
-        "model. It will later be replaced with a trained "
-        "hydrological/ML model using historical reservoir, "
-        "rainfall and inflow data."
+        "⚠️ The current water-level model is a prototype "
+        "calculation. The production version should use "
+        "historical reservoir, rainfall and inflow data "
+        "with a validated hydrological/ML model."
     )
 
     st.caption(
-        "Rainfall forecast provided by OpenWeather."
+        "🌧️ Forecast data provided by OpenWeather."
     )
 
 
@@ -1307,90 +1825,179 @@ elif st.session_state.page == "Flood Simulation":
     )
 
     st.write(
-        "Explore a simplified breach scenario and estimate "
-        "downstream flood propagation."
+        "HYDROSCOPE automatically generates a hypothetical "
+        "failure scenario from the selected reservoir "
+        "conditions and estimates downstream flood propagation."
     )
 
+    # --------------------------------------------------------
+    # ONLY USER SELECTION
+    # --------------------------------------------------------
+
     dam_name = st.selectbox(
-        "Select Dam",
+        "🏗️ Select Dam",
         list(DAM_DATABASE.keys())
     )
 
-    dam = DAM_DATABASE[dam_name]
+    dam = DAM_DATABASE[
+        dam_name
+    ]
 
-    severity = st.slider(
-        "💥 Breach Severity",
-        10,
-        100,
-        50
-    )
+    # --------------------------------------------------------
+    # AUTOMATIC SCENARIO
+    # --------------------------------------------------------
 
-    breach_duration = st.slider(
-        "⏱️ Breach Duration (minutes)",
-        5,
-        120,
-        30,
-        5
-    )
-
-    peak_flow = (
-        dam["outflow"]
-        * (severity / 25)
-        + dam["inflow"] * 0.25
-    )
-
-    arrival_time = max(
-        10,
-        120 - severity + breach_duration * 0.15
-    )
-
-    affected_population = int(
-        5000 * (severity / 100)
-    )
-
-    cols = st.columns(4)
-
-    cols[0].metric(
-        "🌊 Estimated Peak Flow",
-        f"{peak_flow:.0f} m³/s"
-    )
-
-    cols[1].metric(
-        "⏱️ First Arrival",
-        f"{arrival_time:.0f} min"
-    )
-
-    cols[2].metric(
-        "👥 Potentially Affected",
-        f"{affected_population:,}"
-    )
-
-    cols[3].metric(
-        "⚠️ Severity",
-        f"{severity}%"
+    scenario = generate_flood_scenario(
+        dam
     )
 
     st.subheader(
-        "🗺️ Downstream Impact Zones"
+        "🤖 Automatically Generated Scenario"
     )
 
+    st.info(
+        "No breach severity or breach duration is entered "
+        "manually. HYDROSCOPE generates a hypothetical "
+        "scenario from the current prototype reservoir "
+        "conditions."
+    )
+
+    scenario_columns = st.columns(
+        4
+    )
+
+    scenario_columns[0].metric(
+        "🤖 Scenario",
+        scenario["class"]
+    )
+
+    scenario_columns[1].metric(
+        "💧 Reservoir Level",
+        f"{dam['water_level']:.1f}"
+    )
+
+    scenario_columns[2].metric(
+        "🌊 Estimated Peak Flow",
+        f"{scenario['peak_flow']:.0f} m³/s"
+    )
+
+    scenario_columns[3].metric(
+        "⏱️ First Arrival",
+        f"{scenario['arrival_time']:.0f} min"
+    )
+
+    # --------------------------------------------------------
+    # AUTOMATIC PARAMETERS
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🔎 System-Generated Parameters"
+    )
+
+    parameter_columns = st.columns(
+        4
+    )
+
+    parameter_columns[0].metric(
+        "⚠️ Scenario Class",
+        scenario["class"]
+    )
+
+    parameter_columns[1].metric(
+        "🌊 Breach Fraction",
+        f"{scenario['breach_fraction'] * 100:.0f}%"
+    )
+
+    parameter_columns[2].metric(
+        "⏱️ Development Time",
+        f"{scenario['development_time']} min"
+    )
+
+    parameter_columns[3].metric(
+        "👥 Potentially Affected",
+        f"{scenario['affected_population']:,}"
+    )
+
+    # --------------------------------------------------------
+    # RISK
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🚨 Downstream Risk Assessment"
+    )
+
+    if scenario["class"] == "SEVERE":
+
+        st.error(
+            "🔴 CRITICAL — Severe hypothetical "
+            "failure scenario."
+        )
+
+    elif scenario["class"] == "HIGH":
+
+        st.warning(
+            "🟠 HIGH — Significant hypothetical "
+            "flood wave may propagate downstream."
+        )
+
+    elif scenario["class"] == "MODERATE":
+
+        st.warning(
+            "🟡 MODERATE — Downstream areas require "
+            "continued monitoring."
+        )
+
+    else:
+
+        st.success(
+            "🟢 LOW — Lower-intensity hypothetical "
+            "failure scenario."
+        )
+
+    # --------------------------------------------------------
+    # DOWNSTREAM ZONES
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🗺️ Estimated Downstream Impact"
+    )
+
+    arrival = scenario[
+        "arrival_time"
+    ]
+
     zones = pd.DataFrame({
+
         "Zone": [
+
             "Immediate Downstream",
+
             "Near Downstream",
+
             "Extended Downstream",
+
             "Low-Lying Areas"
         ],
-        "Estimated Arrival (min)": [
-            arrival_time,
-            arrival_time + 20,
-            arrival_time + 45,
-            arrival_time + 70
+
+        "Estimated Arrival": [
+
+            f"{arrival:.0f} min",
+
+            f"{arrival + 20:.0f} min",
+
+            f"{arrival + 45:.0f} min",
+
+            f"{arrival + 70:.0f} min"
         ],
+
         "Risk": [
+
             "CRITICAL",
+
             "HIGH",
+
             "MODERATE",
+
             "WATCH"
         ]
     })
@@ -1401,15 +2008,18 @@ elif st.session_state.page == "Flood Simulation":
         hide_index=True
     )
 
+    # --------------------------------------------------------
+    # FLOOD WAVE
+    # --------------------------------------------------------
+
     st.subheader(
-        "📈 Flood Propagation"
+        "📈 Estimated Flood-Wave Propagation"
     )
 
     times = np.arange(
         0,
-        max(
-            121,
-            int(arrival_time + 100)
+        int(
+            arrival + 120
         ),
         5
     )
@@ -1418,48 +2028,117 @@ elif st.session_state.page == "Flood Simulation":
         len(times)
     )
 
-    for i, t in enumerate(times):
+    for index, time in enumerate(
+        times
+    ):
 
-        if t >= arrival_time:
+        if time >= arrival:
 
-            elapsed = t - arrival_time
+            elapsed = (
+                time - arrival
+            )
 
-            flow[i] = (
-                peak_flow
-                * math.exp(
+            flow[index] = (
+                scenario["peak_flow"]
+                *
+                math.exp(
                     -elapsed / 40
                 )
             )
 
-    fig = go.Figure()
+    flood_fig = go.Figure()
 
-    fig.add_trace(
+    flood_fig.add_trace(
         go.Scatter(
             x=times,
             y=flow,
             mode="lines",
             fill="tozeroy",
-            name="Flood Flow"
+            name="Estimated Flood Wave"
         )
     )
 
-    fig.update_layout(
+    flood_fig.update_layout(
         template="plotly_dark",
         height=430,
-        title="Estimated Flood Wave",
-        xaxis_title="Time (minutes)",
-        yaxis_title="Flow (m³/s)"
+        title=(
+            f"Estimated Flood Wave — "
+            f"{dam_name}"
+        ),
+        xaxis_title="Time After Failure (minutes)",
+        yaxis_title="Discharge (m³/s)"
     )
 
     st.plotly_chart(
-        fig,
+        flood_fig,
         use_container_width=True
     )
 
+    # --------------------------------------------------------
+    # FUTURE HYDRAULIC MODEL
+    # --------------------------------------------------------
+
+    st.subheader(
+        "🧠 Production Flood-Modelling Pipeline"
+    )
+
+    st.write(
+        "💧 Reservoir storage and water level"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🏗️ Dam geometry and engineering parameters"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🌊 Breach hydraulics"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🗺️ DEM / terrain elevation"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🌊 River-network routing"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🏘️ Villages + roads + bridges"
+    )
+
+    st.write(
+        "↓"
+    )
+
+    st.write(
+        "🚨 Flood depth + arrival time + risk"
+    )
+
     st.warning(
-        "⚠️ Simplified prototype simulation. Production "
-        "implementation requires DEM/topography, river "
-        "networks and validated hydraulic modelling."
+        "⚠️ This is a simplified prototype simulation. "
+        "It does NOT predict actual dam failure. A production "
+        "version requires validated dam-engineering data, "
+        "terrain/elevation data and hydraulic modelling."
     )
 
 
@@ -1478,63 +2157,82 @@ elif st.session_state.page == "Emergency Center":
     )
 
     st.subheader(
-        "⚠️ Immediate Response Checklist"
+        "⚠️ Response Checklist"
     )
 
     checklist = [
+
         "Verify reservoir and rainfall observations.",
+
         "Check current gate/shutter status.",
-        "Assess downstream river level.",
+
+        "Assess downstream river conditions.",
+
         "Identify vulnerable settlements.",
-        "Check roads and bridge accessibility.",
+
+        "Check roads and bridges.",
+
         "Coordinate with disaster-management authorities.",
-        "Issue evacuation warnings through authorised channels.",
-        "Continue monitoring water-level changes."
+
+        "Prepare authorised warning and evacuation procedures.",
+
+        "Continue monitoring reservoir conditions."
     ]
 
-    for item in checklist:
+    for index, item in enumerate(
+        checklist
+    ):
 
         st.checkbox(
             item,
-            key=f"emergency_{item}"
+            key=f"checklist_{index}"
         )
+
+    # --------------------------------------------------------
+    # SYSTEM STATUS
+    # --------------------------------------------------------
 
     st.subheader(
         "📡 System Status"
     )
 
-    status_cols = st.columns(4)
+    status_columns = st.columns(
+        4
+    )
 
-    status_cols[0].success(
+    status_columns[0].success(
         "🟢 Weather Service"
     )
 
-    status_cols[1].warning(
+    status_columns[1].warning(
         "🟡 Dam Data"
     )
 
-    status_cols[2].success(
+    status_columns[2].success(
         "🟢 Prediction Engine"
     )
 
-    status_cols[3].success(
+    status_columns[3].success(
         "🟢 Flood Model"
     )
+
+    # --------------------------------------------------------
+    # ALERT LEVEL
+    # --------------------------------------------------------
 
     st.subheader(
         "📢 Alert Classification"
     )
 
-    alert_level = st.select_slider(
-        "Current alert level",
-        options=[
+    alert_level = st.selectbox(
+        "System alert level",
+        [
             "NORMAL",
             "WATCH",
             "ADVISORY",
             "WARNING",
             "CRITICAL"
-        ],
-        value="WATCH"
+        ]
     )
 
     if alert_level == "NORMAL":
@@ -1570,20 +2268,27 @@ elif st.session_state.page == "Emergency Center":
             "authorised emergency authorities is required."
         )
 
+    # --------------------------------------------------------
+    # SAFETY
+    # --------------------------------------------------------
+
     st.subheader(
         "🛡️ HYDROSCOPE Safety Principle"
     )
 
-    st.markdown(
-        """
-        HYDROSCOPE is a **decision-support system**.
+    st.write(
+        "HYDROSCOPE is a decision-support system."
+    )
 
-        It does not autonomously operate dam gates or issue
-        official evacuation orders.
+    st.write(
+        "It does not autonomously operate dam gates "
+        "or issue official evacuation orders."
+    )
 
-        Final operational decisions must remain with authorised
-        dam-management and disaster-management authorities.
-        """
+    st.write(
+        "Final operational decisions remain with "
+        "authorised dam-management and disaster-management "
+        "authorities."
     )
 
 
@@ -1594,11 +2299,10 @@ elif st.session_state.page == "Emergency Center":
 st.divider()
 
 st.markdown(
-    """
-    <div class="footer">
-    💧 HYDROSCOPE • Intelligent Dam & Flood Decision Support System<br>
-    Smart India Hackathon Prototype • Kerala
-    </div>
-    """,
+    '<div class="footer">'
+    '💧 HYDROSCOPE • Intelligent Dam & Flood Decision Support System'
+    '<br>'
+    'Smart India Hackathon Prototype • Kerala'
+    '</div>',
     unsafe_allow_html=True
 )

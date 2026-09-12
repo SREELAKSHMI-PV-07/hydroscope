@@ -9,7 +9,7 @@ from streamlit_folium import st_folium
 
 
 # ============================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # ============================================================
 
 st.set_page_config(
@@ -21,7 +21,7 @@ st.set_page_config(
 
 
 # ============================================================
-# GLOBAL STYLE
+# GLOBAL CSS
 # ============================================================
 
 st.markdown(
@@ -63,6 +63,8 @@ p, label {
     color: #e7f3fa !important;
 }
 
+/* HYDROSCOPE HEADER */
+
 .hero-title {
     font-size: 42px;
     font-weight: 800;
@@ -76,6 +78,8 @@ p, label {
     letter-spacing: 1px;
     margin-bottom: 18px;
 }
+
+/* NAVIGATION BUTTONS */
 
 div.stButton > button {
     width: 100%;
@@ -101,6 +105,8 @@ div.stButton > button:active {
     transform: scale(0.97);
 }
 
+/* METRIC CARDS */
+
 div[data-testid="stMetric"] {
     background: rgba(9, 39, 57, 0.72);
     border: 1px solid rgba(112, 203, 244, 0.20);
@@ -108,15 +114,14 @@ div[data-testid="stMetric"] {
     padding: 15px;
 }
 
+/* SELECT BOX */
+
 div[data-baseweb="select"] > div {
     background: rgba(8, 37, 54, 0.90);
     border-color: rgba(100, 190, 230, 0.30);
 }
 
-div[data-testid="stDataFrame"] {
-    border-radius: 15px;
-    overflow: hidden;
-}
+/* FOOTER */
 
 .footer {
     text-align: center;
@@ -136,11 +141,10 @@ div[data-testid="stDataFrame"] {
 # ============================================================
 #
 # IMPORTANT:
-# These reservoir values are currently PROTOTYPE values.
-# They are NOT presented as live operational dam data.
+# These reservoir values are prototype/demo values.
+# They are NOT live operational dam-control values.
 #
-# Later this dictionary will be replaced by an official
-# reservoir-data source.
+# Later these can be replaced by verified official data.
 # ============================================================
 
 DAM_DATABASE = {
@@ -330,7 +334,6 @@ LOCATIONS = {
 # ============================================================
 
 if "page" not in st.session_state:
-
     st.session_state.page = "Dashboard"
 
 
@@ -370,10 +373,8 @@ def distance_km(
 
     return (
         earth_radius
-        *
-        2
-        *
-        math.atan2(
+        * 2
+        * math.atan2(
             math.sqrt(a),
             math.sqrt(1 - a)
         )
@@ -381,7 +382,7 @@ def distance_km(
 
 
 # ============================================================
-# FIND NEARBY DAMS
+# NEARBY DAMS
 # ============================================================
 
 def nearby_dams(
@@ -409,7 +410,6 @@ def nearby_dams(
             result = dam.copy()
 
             result["name"] = name
-
             result["distance"] = distance
 
             results.append(result)
@@ -450,13 +450,9 @@ def get_current_weather(
     )
 
     params = {
-
         "lat": lat,
-
         "lon": lon,
-
         "appid": api_key,
-
         "units": "metric"
     }
 
@@ -569,13 +565,9 @@ def get_forecast(
     )
 
     params = {
-
         "lat": lat,
-
         "lon": lon,
-
         "appid": api_key,
-
         "units": "metric"
     }
 
@@ -643,16 +635,9 @@ def get_forecast(
                     item["weather"][0]["description"]
             })
 
-        forecast_df = pd.DataFrame(
-            rows
-        )
-
         return {
-
             "success": True,
-
-            "data":
-                forecast_df
+            "data": pd.DataFrame(rows)
         }
 
     except requests.exceptions.RequestException as error:
@@ -674,17 +659,11 @@ def analyse_rainfall(
     if forecast_df.empty:
 
         return {
-
             "rain_6h": 0.0,
-
             "rain_12h": 0.0,
-
             "rain_24h": 0.0,
-
             "peak_3h": 0.0,
-
             "trend": "Unknown",
-
             "intensity": "Unknown"
         }
 
@@ -806,13 +785,6 @@ def analyse_rainfall(
 # ============================================================
 # WATER LEVEL PREDICTION
 # ============================================================
-#
-# Current version:
-# Prototype hydrological relationship.
-#
-# Future version:
-# Trained ML/hydrological model using historical data.
-# ============================================================
 
 def predict_water_level(
     dam,
@@ -892,11 +864,6 @@ def calculate_release_probability(
 
 # ============================================================
 # AUTOMATIC FLOOD SCENARIO
-# ============================================================
-#
-# IMPORTANT:
-# This is a prototype scenario generator.
-# It does NOT predict that a dam will actually fail.
 # ============================================================
 
 def generate_flood_scenario(
@@ -1030,14 +997,26 @@ def create_dam_map(
         location_name
     ]
 
+    # ========================================================
+    # OPENSTREETMAP
+    # ========================================================
+    #
+    # This replaces CartoDB.
+    # No map API key is required.
+    #
     map_object = folium.Map(
         location=[
             lat,
             lon
         ],
         zoom_start=8,
-        tiles="CartoDB dark_matter"
+        tiles="OpenStreetMap",
+        control_scale=True
     )
+
+    # ========================================================
+    # 120 KM MONITORING RADIUS
+    # ========================================================
 
     folium.Circle(
         location=[
@@ -1047,31 +1026,47 @@ def create_dam_map(
         radius=120000,
         color="#25b9ff",
         fill=True,
-        fill_opacity=0.05,
-        weight=2
+        fill_opacity=0.06,
+        weight=2,
+        tooltip=(
+            "💧 HYDROSCOPE "
+            "120 km Monitoring Zone"
+        )
     ).add_to(
         map_object
     )
+
+    # ========================================================
+    # SELECTED MONITORING LOCATION
+    # ========================================================
 
     folium.Marker(
         [
             lat,
             lon
         ],
-        tooltip=(
-            f"📍 {location_name}"
-        ),
-        popup=(
-            f"Monitoring Location: "
-            f"{location_name}"
+        tooltip=f"📍 {location_name}",
+        popup=folium.Popup(
+            f"""
+            <b>📍 HYDROSCOPE Monitoring Location</b><br><br>
+            Location: {location_name}<br>
+            Latitude: {lat:.4f}<br>
+            Longitude: {lon:.4f}<br>
+            Monitoring Radius: 120 km
+            """,
+            max_width=300
         ),
         icon=folium.Icon(
             color="blue",
-            icon="map-marker"
+            icon="info-sign"
         )
     ).add_to(
         map_object
     )
+
+    # ========================================================
+    # DAM MARKERS
+    # ========================================================
 
     for name, dam in DAM_DATABASE.items():
 
@@ -1084,25 +1079,54 @@ def create_dam_map(
 
         if distance <= 120:
 
-            if dam["risk"] == "Moderate":
-
-                marker_color = "orange"
-
-            elif dam["risk"] == "High":
+            if dam["risk"] == "High":
 
                 marker_color = "red"
+
+            elif dam["risk"] == "Moderate":
+
+                marker_color = "orange"
 
             else:
 
                 marker_color = "green"
 
             popup_text = f"""
-            <b>{name}</b><br>
-            Water Level: {dam['water_level']}<br>
-            Inflow: {dam['inflow']} m³/s<br>
-            Outflow: {dam['outflow']} m³/s<br>
-            Distance: {distance:.1f} km<br>
-            Data: {dam['status']}
+            <div style="
+                font-family: Arial;
+                width: 240px;
+            ">
+
+                <h4>
+                    💧 {name}
+                </h4>
+
+                <b>District:</b>
+                {dam["district"]}<br><br>
+
+                <b>Water Level:</b>
+                {dam["water_level"]:.1f}<br>
+
+                <b>Inflow:</b>
+                {dam["inflow"]:.0f} m³/s<br>
+
+                <b>Outflow:</b>
+                {dam["outflow"]:.0f} m³/s<br>
+
+                <b>Open Shutters:</b>
+                {dam["open_shutters"]}/
+                {dam["total_shutters"]}<br>
+
+                <b>Risk:</b>
+                {dam["risk"]}<br>
+
+                <b>Distance:</b>
+                {distance:.1f} km<br>
+
+                <b>Data:</b>
+                {dam["status"]}
+
+            </div>
             """
 
             folium.Marker(
@@ -1110,7 +1134,7 @@ def create_dam_map(
                     dam["lat"],
                     dam["lon"]
                 ],
-                tooltip=name,
+                tooltip=f"💧 {name}",
                 popup=folium.Popup(
                     popup_text,
                     max_width=300
@@ -1123,26 +1147,96 @@ def create_dam_map(
                 map_object
             )
 
+            # Small risk circle around dam
+
+            folium.Circle(
+                location=[
+                    dam["lat"],
+                    dam["lon"]
+                ],
+                radius=3000,
+                color=marker_color,
+                fill=True,
+                fill_opacity=0.12,
+                weight=1
+            ).add_to(
+                map_object
+            )
+
+    # ========================================================
+    # MAP LEGEND
+    # ========================================================
+
+    legend_html = """
+    <div style="
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        z-index: 9999;
+        background: rgba(5,25,40,0.94);
+        padding: 12px 16px;
+        border-radius: 12px;
+        color: white;
+        font-family: Arial;
+        font-size: 13px;
+        border: 1px solid rgba(100,200,255,0.4);
+    ">
+
+        <b>💧 HYDROSCOPE Map</b>
+        <br><br>
+
+        <span style="color:#22c55e;">
+            ●
+        </span>
+        Normal
+        <br>
+
+        <span style="color:#f59e0b;">
+            ●
+        </span>
+        Moderate Risk
+        <br>
+
+        <span style="color:#ef4444;">
+            ●
+        </span>
+        High Risk
+        <br>
+
+        <span style="color:#25b9ff;">
+            ●
+        </span>
+        Monitoring Location
+
+    </div>
+    """
+
+    map_object.get_root().html.add_child(
+        folium.Element(
+            legend_html
+        )
+    )
+
     return map_object
 
 
 # ============================================================
 # HEADER
 # ============================================================
-#
-# Native Streamlit elements are deliberately used here.
-# This prevents the raw HTML problem from your screenshot.
-# ============================================================
 
 st.markdown(
-    '<div class="hero-title">💧 HYDROSCOPE</div>',
+    '<div class="hero-title">'
+    '💧 HYDROSCOPE'
+    '</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
     '<div class="hero-subtitle">'
-    'INTELLIGENT DAM MONITORING • WATER PREDICTION • '
-    'FLOOD SIMULATION • EMERGENCY DECISION SUPPORT'
+    'INTELLIGENT DAM MONITORING • '
+    'WATER PREDICTION • '
+    'FLOOD SIMULATION • '
+    'EMERGENCY DECISION SUPPORT'
     '</div>',
     unsafe_allow_html=True
 )
@@ -1154,30 +1248,15 @@ st.markdown(
 
 pages = [
 
-    (
-        "🏠",
-        "Dashboard"
-    ),
+    ("🏠", "Dashboard"),
 
-    (
-        "🏗️",
-        "Dam Monitoring"
-    ),
+    ("🏗️", "Dam Monitoring"),
 
-    (
-        "🌦️",
-        "Prediction"
-    ),
+    ("🌦️", "Prediction"),
 
-    (
-        "🌊",
-        "Flood Simulation"
-    ),
+    ("🌊", "Flood Simulation"),
 
-    (
-        "🚨",
-        "Emergency Center"
-    )
+    ("🚨", "Emergency Center")
 ]
 
 
@@ -1197,12 +1276,10 @@ for column, page_info in zip(
 
         if st.button(
             f"{icon}  {page_name}",
-            key=f"navigation_{page_name}"
+            key=f"nav_{page_name}"
         ):
 
-            st.session_state.page = (
-                page_name
-            )
+            st.session_state.page = page_name
 
             st.rerun()
 
@@ -1244,12 +1321,12 @@ if st.session_state.page == "Dashboard":
         f"Radius: 120 km"
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # WEATHER
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
-        "🌦️ Current Weather"
+        "🌦️ Live Weather"
     )
 
     weather = get_current_weather(
@@ -1301,9 +1378,9 @@ if st.session_state.page == "Dashboard":
             f"{weather['error']}"
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # NEARBY DAMS
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🏗️ Nearby Dams"
@@ -1341,9 +1418,9 @@ if st.session_state.page == "Dashboard":
                     f"Data: {dam['status']}"
                 )
 
-    # --------------------------------------------------------
+    # ========================================================
     # MAP
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🗺️ Dam Monitoring Map"
@@ -1358,9 +1435,9 @@ if st.session_state.page == "Dashboard":
         returned_objects=[]
     )
 
-    # --------------------------------------------------------
-    # WATER LEVEL COMPARISON
-    # --------------------------------------------------------
+    # ========================================================
+    # LEVEL COMPARISON
+    # ========================================================
 
     st.subheader(
         "📈 Reservoir Level Comparison"
@@ -1386,7 +1463,8 @@ if st.session_state.page == "Dashboard":
         fig.add_trace(
             go.Bar(
                 x=chart_df["Dam"],
-                y=chart_df["Water Level"]
+                y=chart_df["Water Level"],
+                name="Water Level"
             )
         )
 
@@ -1449,13 +1527,13 @@ elif st.session_state.page == "Dam Monitoring":
     )
 
     monitoring_columns[3].metric(
-        "🌧️ Current Rainfall",
+        "🌧️ Rainfall",
         f"{dam['rainfall']:.0f} mm"
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # SHUTTERS
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🚪 Shutter Status"
@@ -1484,9 +1562,9 @@ elif st.session_state.page == "Dam Monitoring":
                     "CLOSED"
                 )
 
-    # --------------------------------------------------------
-    # HISTORICAL PROTOTYPE TREND
-    # --------------------------------------------------------
+    # ========================================================
+    # TREND
+    # ========================================================
 
     st.subheader(
         "📈 Water-Level Trend"
@@ -1552,9 +1630,9 @@ elif st.session_state.page == "Prediction":
         dam_name
     ]
 
-    # --------------------------------------------------------
+    # ========================================================
     # AUTOMATIC FORECAST
-    # --------------------------------------------------------
+    # ========================================================
 
     forecast = get_forecast(
         dam["lat"],
@@ -1578,9 +1656,9 @@ elif st.session_state.page == "Prediction":
         forecast_df
     )
 
-    # --------------------------------------------------------
-    # RAINFALL PREDICTION
-    # --------------------------------------------------------
+    # ========================================================
+    # AUTOMATIC RAINFALL PREDICTION
+    # ========================================================
 
     st.subheader(
         "🤖 System-Predicted Rainfall"
@@ -1616,9 +1694,9 @@ elif st.session_state.page == "Prediction":
         f"Trend: **{rainfall['trend']}**"
     )
 
-    # --------------------------------------------------------
-    # RAINFALL GRAPH
-    # --------------------------------------------------------
+    # ========================================================
+    # RAINFALL FORECAST GRAPH
+    # ========================================================
 
     st.subheader(
         "📈 Automatic Rainfall Forecast"
@@ -1646,9 +1724,9 @@ elif st.session_state.page == "Prediction":
         use_container_width=True
     )
 
-    # --------------------------------------------------------
-    # WATER LEVEL
-    # --------------------------------------------------------
+    # ========================================================
+    # WATER LEVEL PREDICTION
+    # ========================================================
 
     predicted_level = predict_water_level(
         dam,
@@ -1703,9 +1781,9 @@ elif st.session_state.page == "Prediction":
             "🟢 LOW RELEASE POSSIBILITY"
         )
 
-    # --------------------------------------------------------
-    # WATER LEVEL FORECAST
-    # --------------------------------------------------------
+    # ========================================================
+    # 24-HOUR WATER LEVEL FORECAST
+    # ========================================================
 
     st.subheader(
         "📊 24-Hour Reservoir Prediction"
@@ -1750,9 +1828,9 @@ elif st.session_state.page == "Prediction":
         use_container_width=True
     )
 
-    # --------------------------------------------------------
-    # SYSTEM LOGIC
-    # --------------------------------------------------------
+    # ========================================================
+    # DECISION PIPELINE
+    # ========================================================
 
     st.subheader(
         "🧠 HYDROSCOPE Decision Pipeline"
@@ -1762,41 +1840,31 @@ elif st.session_state.page == "Prediction":
         "🌦️ Weather forecast"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🌧️ Automatic rainfall prediction"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "💧 Current reservoir condition"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "⬆️ Inflow + ⬇️ Outflow"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🤖 Water-level prediction"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🚪 Release-risk assessment"
@@ -1826,13 +1894,13 @@ elif st.session_state.page == "Flood Simulation":
 
     st.write(
         "HYDROSCOPE automatically generates a hypothetical "
-        "failure scenario from the selected reservoir "
-        "conditions and estimates downstream flood propagation."
+        "failure scenario from reservoir conditions and "
+        "estimates downstream flood propagation."
     )
 
-    # --------------------------------------------------------
-    # ONLY USER SELECTION
-    # --------------------------------------------------------
+    # ========================================================
+    # ONLY DAM SELECTION
+    # ========================================================
 
     dam_name = st.selectbox(
         "🏗️ Select Dam",
@@ -1843,9 +1911,9 @@ elif st.session_state.page == "Flood Simulation":
         dam_name
     ]
 
-    # --------------------------------------------------------
+    # ========================================================
     # AUTOMATIC SCENARIO
-    # --------------------------------------------------------
+    # ========================================================
 
     scenario = generate_flood_scenario(
         dam
@@ -1858,8 +1926,7 @@ elif st.session_state.page == "Flood Simulation":
     st.info(
         "No breach severity or breach duration is entered "
         "manually. HYDROSCOPE generates a hypothetical "
-        "scenario from the current prototype reservoir "
-        "conditions."
+        "scenario from the reservoir conditions."
     )
 
     scenario_columns = st.columns(
@@ -1886,9 +1953,9 @@ elif st.session_state.page == "Flood Simulation":
         f"{scenario['arrival_time']:.0f} min"
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # AUTOMATIC PARAMETERS
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🔎 System-Generated Parameters"
@@ -1918,9 +1985,9 @@ elif st.session_state.page == "Flood Simulation":
         f"{scenario['affected_population']:,}"
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # RISK
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🚨 Downstream Risk Assessment"
@@ -1954,9 +2021,9 @@ elif st.session_state.page == "Flood Simulation":
             "failure scenario."
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # DOWNSTREAM ZONES
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🗺️ Estimated Downstream Impact"
@@ -2008,9 +2075,9 @@ elif st.session_state.page == "Flood Simulation":
         hide_index=True
     )
 
-    # --------------------------------------------------------
+    # ========================================================
     # FLOOD WAVE
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "📈 Estimated Flood-Wave Propagation"
@@ -2074,9 +2141,9 @@ elif st.session_state.page == "Flood Simulation":
         use_container_width=True
     )
 
-    # --------------------------------------------------------
-    # FUTURE HYDRAULIC MODEL
-    # --------------------------------------------------------
+    # ========================================================
+    # PRODUCTION PIPELINE
+    # ========================================================
 
     st.subheader(
         "🧠 Production Flood-Modelling Pipeline"
@@ -2086,49 +2153,37 @@ elif st.session_state.page == "Flood Simulation":
         "💧 Reservoir storage and water level"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🏗️ Dam geometry and engineering parameters"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🌊 Breach hydraulics"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🗺️ DEM / terrain elevation"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🌊 River-network routing"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🏘️ Villages + roads + bridges"
     )
 
-    st.write(
-        "↓"
-    )
+    st.write("↓")
 
     st.write(
         "🚨 Flood depth + arrival time + risk"
@@ -2188,9 +2243,9 @@ elif st.session_state.page == "Emergency Center":
             key=f"checklist_{index}"
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # SYSTEM STATUS
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "📡 System Status"
@@ -2216,9 +2271,9 @@ elif st.session_state.page == "Emergency Center":
         "🟢 Flood Model"
     )
 
-    # --------------------------------------------------------
-    # ALERT LEVEL
-    # --------------------------------------------------------
+    # ========================================================
+    # ALERT CLASSIFICATION
+    # ========================================================
 
     st.subheader(
         "📢 Alert Classification"
@@ -2268,9 +2323,9 @@ elif st.session_state.page == "Emergency Center":
             "authorised emergency authorities is required."
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # SAFETY
-    # --------------------------------------------------------
+    # ========================================================
 
     st.subheader(
         "🛡️ HYDROSCOPE Safety Principle"
@@ -2300,7 +2355,8 @@ st.divider()
 
 st.markdown(
     '<div class="footer">'
-    '💧 HYDROSCOPE • Intelligent Dam & Flood Decision Support System'
+    '💧 HYDROSCOPE • '
+    'Intelligent Dam & Flood Decision Support System'
     '<br>'
     'Smart India Hackathon Prototype • Kerala'
     '</div>',

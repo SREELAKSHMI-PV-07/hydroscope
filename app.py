@@ -1,13 +1,15 @@
-import streamlit as st
-import pandas as pd
+import math
+import requests
 import numpy as np
+import pandas as pd
+import streamlit as st
 import plotly.graph_objects as go
 import folium
 from streamlit_folium import st_folium
-from math import radians, sin, cos, sqrt, atan2
+
 
 # ============================================================
-# HYDROSCOPE
+# PAGE CONFIG
 # ============================================================
 
 st.set_page_config(
@@ -17,392 +19,205 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+
 # ============================================================
-# GLOBAL STYLE
+# GLOBAL CSS
 # ============================================================
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-* {
-    font-family: 'Inter', sans-serif;
+html, body, [class*="css"] {
+    font-family: Arial, sans-serif;
 }
 
-html, body, [data-testid="stAppViewContainer"] {
+.stApp {
     background:
-        radial-gradient(circle at 15% 10%, rgba(0,160,220,0.08), transparent 30%),
-        radial-gradient(circle at 85% 80%, rgba(0,90,180,0.07), transparent 30%),
-        #080c13 !important;
-    color: #eaf7ff !important;
-}
-
-[data-testid="stHeader"] {
-    background: transparent !important;
-}
-
-[data-testid="stToolbar"] {
-    visibility: hidden;
-}
-
-section[data-testid="stSidebar"] {
-    display: none;
+        radial-gradient(circle at 15% 15%, rgba(0, 180, 255, 0.12), transparent 30%),
+        radial-gradient(circle at 85% 80%, rgba(0, 120, 255, 0.10), transparent 30%),
+        linear-gradient(135deg, #06111f, #081827 45%, #03101c);
+    color: #ffffff;
 }
 
 .block-container {
-    max-width: 1450px !important;
-    padding-top: 1.5rem !important;
-    padding-bottom: 3rem !important;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+    max-width: 1450px;
 }
 
-/* HEADER */
-
 .hydro-header {
-    text-align: center;
-    padding: 12px 0 20px 0;
+    padding: 22px 28px;
+    margin-bottom: 18px;
+    border-radius: 22px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.13);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
 }
 
 .hydro-title {
-    font-size: 43px;
+    font-size: 42px;
     font-weight: 800;
-    letter-spacing: 7px;
-    color: #effbff;
+    letter-spacing: 4px;
+    margin: 0;
 }
 
 .hydro-subtitle {
+    color: #9ec9e8;
     margin-top: 5px;
-    font-size: 12px;
-    letter-spacing: 4px;
-    color: #68dcff;
+    font-size: 15px;
 }
-
-/* GLASS */
 
 .glass-card {
-    background:
-        linear-gradient(
-            135deg,
-            rgba(255,255,255,0.065),
-            rgba(255,255,255,0.025)
-        );
-    border: 1px solid rgba(150,220,255,0.10);
-    border-radius: 22px;
-    padding: 24px;
-    margin-bottom: 18px;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    box-shadow:
-        0 15px 40px rgba(0,0,0,0.22),
-        inset 0 1px 0 rgba(255,255,255,0.03);
-    transition: 0.25s ease;
-}
-
-.glass-card:hover {
-    border-color: rgba(70,210,255,0.22);
-    box-shadow:
-        0 18px 45px rgba(0,0,0,0.25),
-        0 0 30px rgba(40,180,240,0.05);
-}
-
-/* TITLES */
-
-.section-title {
-    font-size: 21px;
-    font-weight: 700;
-    color: #effaff;
-}
-
-.section-description {
-    font-size: 13px;
-    color: #8196a6;
-    margin-top: 5px;
+    padding: 22px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.065);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(15px);
+    box-shadow: 0 10px 35px rgba(0,0,0,0.20);
     margin-bottom: 18px;
 }
-
-/* NAVIGATION */
-
-.nav-label {
-    text-align: center;
-    color: #6f8999;
-    font-size: 11px;
-    margin-top: 5px;
-}
-
-/* METRICS */
 
 .metric-card {
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.08);
+    padding: 20px;
     border-radius: 18px;
-    padding: 19px;
+    background: rgba(255,255,255,0.065);
+    border: 1px solid rgba(255,255,255,0.11);
     min-height: 125px;
-    transition: 0.25s ease;
-}
-
-.metric-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(80,210,255,0.25);
 }
 
 .metric-label {
-    color: #8296a5;
-    font-size: 11px;
+    color: #8eb6d5;
+    font-size: 13px;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
 }
 
 .metric-value {
-    color: #effaff;
     font-size: 30px;
-    font-weight: 700;
+    font-weight: 750;
     margin-top: 8px;
 }
 
-.metric-unit {
-    color: #708696;
+.metric-small {
+    color: #8faabd;
     font-size: 12px;
-}
-
-.metric-status {
-    font-size: 11px;
-    margin-top: 7px;
-}
-
-.status-normal {
-    color: #55dfa4;
-}
-
-.status-warning {
-    color: #ffc857;
-}
-
-.status-danger {
-    color: #ff7171;
-}
-
-.status-critical {
-    color: #ff405d;
-}
-
-/* BUTTONS */
-
-.stButton > button {
-    width: 100%;
-    min-height: 43px;
-    border-radius: 13px !important;
-    border: 1px solid rgba(100,220,255,0.16) !important;
-    background: rgba(255,255,255,0.045) !important;
-    color: #eafaff !important;
-    font-weight: 600 !important;
-    transition: 0.2s ease !important;
-}
-
-.stButton > button:hover {
-    transform: translateY(-2px);
-    border-color: rgba(80,215,255,0.55) !important;
-    background: rgba(50,190,240,0.10) !important;
-    box-shadow: 0 8px 25px rgba(30,180,240,0.12);
-}
-
-.stButton > button:active {
-    transform: scale(0.97);
-}
-
-/* INPUT */
-
-.stSelectbox > div > div {
-    background: rgba(255,255,255,0.035) !important;
-    border: 1px solid rgba(255,255,255,0.10) !important;
-    border-radius: 12px !important;
-}
-
-/* LOCATION */
-
-.location-card {
-    background:
-        radial-gradient(
-            circle at 80% 20%,
-            rgba(45,200,255,0.10),
-            transparent 40%
-        ),
-        rgba(255,255,255,0.035);
-    border: 1px solid rgba(90,210,255,0.14);
-    border-radius: 22px;
-    padding: 24px;
-    margin-bottom: 20px;
-}
-
-.location-title {
-    font-size: 20px;
-    font-weight: 700;
-}
-
-.location-subtitle {
-    color: #8297a7;
-    font-size: 13px;
     margin-top: 5px;
 }
 
-/* DAM CARD */
-
-.dam-card {
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 18px;
-    padding: 18px;
-    margin-bottom: 12px;
-    transition: 0.25s ease;
+.section-title {
+    font-size: 25px;
+    font-weight: 750;
+    margin: 12px 0 15px 0;
 }
 
-.dam-card:hover {
-    border-color: rgba(70,210,255,0.25);
+.dam-card {
+    padding: 18px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.11);
+    margin-bottom: 12px;
+}
+
+.status-normal {
+    color: #54e39a;
+    font-weight: 700;
+}
+
+.status-moderate {
+    color: #ffc857;
+    font-weight: 700;
+}
+
+.status-high {
+    color: #ff806e;
+    font-weight: 700;
+}
+
+.status-critical {
+    color: #ff3d5a;
+    font-weight: 800;
+}
+
+.weather-box {
+    padding: 22px;
+    border-radius: 20px;
+    background:
+        linear-gradient(135deg,
+        rgba(0,155,255,0.18),
+        rgba(0,80,160,0.07));
+    border: 1px solid rgba(80,190,255,0.20);
+}
+
+.weather-temp {
+    font-size: 42px;
+    font-weight: 800;
+}
+
+.weather-description {
+    color: #a7c9df;
+    text-transform: capitalize;
+}
+
+.alert-box {
+    padding: 18px;
+    border-radius: 16px;
+    background: rgba(255,80,70,0.10);
+    border: 1px solid rgba(255,90,80,0.30);
+}
+
+.info-box {
+    padding: 18px;
+    border-radius: 16px;
+    background: rgba(0,170,255,0.08);
+    border: 1px solid rgba(0,170,255,0.20);
+}
+
+.footer {
+    text-align: center;
+    color: #66869e;
+    font-size: 12px;
+    padding: 30px 0 10px 0;
+}
+
+div.stButton > button {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.07);
+    color: white;
+    transition: 0.2s;
+}
+
+div.stButton > button:hover {
+    border-color: rgba(80,190,255,0.6);
+    background: rgba(0,150,255,0.15);
     transform: translateY(-2px);
 }
 
-.dam-name {
-    font-size: 17px;
-    font-weight: 700;
-    color: #edfaff;
-}
-
-.dam-location {
-    color: #718899;
-    font-size: 12px;
-    margin-top: 3px;
-}
-
-.dam-distance {
-    color: #67dcff;
-    font-size: 12px;
-    margin-top: 10px;
-}
-
-.dam-level {
-    font-size: 25px;
-    font-weight: 700;
-    margin-top: 12px;
-}
-
-.dam-small {
-    color: #7f94a4;
-    font-size: 11px;
-}
-
-/* ALERTS */
-
-.alert-card {
-    border-radius: 17px;
-    padding: 17px;
-    margin-bottom: 12px;
-}
-
-.alert-normal {
-    background: rgba(50,210,150,0.06);
-    border: 1px solid rgba(50,210,150,0.18);
-}
-
-.alert-warning {
-    background: rgba(255,190,60,0.06);
-    border: 1px solid rgba(255,190,60,0.18);
-}
-
-.alert-danger {
-    background: rgba(255,70,70,0.06);
-    border: 1px solid rgba(255,70,70,0.20);
-}
-
-/* SHUTTERS */
-
-.shutter {
-    display: inline-block;
-    width: 32px;
-    height: 95px;
-    margin: 4px;
-    border-radius: 7px;
-    background: linear-gradient(
-        90deg,
-        #17232d,
-        #435766,
-        #17232d
-    );
-    border: 1px solid rgba(200,230,240,0.15);
-}
-
-.shutter.open {
-    background: linear-gradient(
-        180deg,
-        #5be4ff,
-        #176d9c
-    );
-    box-shadow: 0 0 15px rgba(50,210,255,0.22);
-}
-
-/* FOOTER */
-
-.hydro-footer {
-    text-align: center;
-    padding: 35px 0 10px 0;
-    color: #526675;
-    font-size: 11px;
-    letter-spacing: 1px;
-}
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================
-# RIPPLE EFFECT
-# ============================================================
-
-st.markdown("""
-<style>
-.hydro-ripple {
-    position: fixed;
-    width: 10px;
-    height: 10px;
-    border: 2px solid rgba(80,220,255,0.65);
-    border-radius: 50%;
-    pointer-events: none;
-    transform: translate(-50%, -50%);
-    animation: hydroRipple 0.9s ease-out forwards;
-    z-index: 999999;
-}
-
-@keyframes hydroRipple {
-    0% {
-        width: 10px;
-        height: 10px;
-        opacity: 0.9;
-    }
-
-    100% {
-        width: 180px;
-        height: 180px;
-        opacity: 0;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ============================================================
 # HEADER
 # ============================================================
 
-st.markdown(
-    '<div class="hydro-header">'
-    '<div class="hydro-title">💧 HYDROSCOPE</div>'
-    '<div class="hydro-subtitle">DAM INTELLIGENCE • FLOOD PREDICTION • SAFETY</div>'
-    '</div>',
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div class="hydro-header">
+    <div class="hydro-title">💧 HYDROSCOPE</div>
+    <div class="hydro-subtitle">
+        Intelligent Dam Monitoring • Water Prediction • Flood Simulation • Emergency Decision Support
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 
 # ============================================================
-# DAM DATABASE
+# DATA
 # ============================================================
 
-dams = pd.DataFrame([
-    {
-        "name": "Idukki Dam",
-        "district": "Idukki",
+dams = {
+    "Idukki Dam": {
         "lat": 9.8494,
         "lon": 76.9726,
         "level": 88,
@@ -410,13 +225,12 @@ dams = pd.DataFrame([
         "outflow": 600,
         "rainfall": 72,
         "shutters": 8,
-        "open_shutters": 2,
+        "open": 2,
         "opening": 20,
         "risk": "Moderate"
     },
-    {
-        "name": "Idamalayar Dam",
-        "district": "Ernakulam",
+
+    "Idamalayar Dam": {
         "lat": 10.2068,
         "lon": 76.7032,
         "level": 72,
@@ -424,13 +238,12 @@ dams = pd.DataFrame([
         "outflow": 310,
         "rainfall": 48,
         "shutters": 4,
-        "open_shutters": 1,
+        "open": 1,
         "opening": 15,
         "risk": "Normal"
     },
-    {
-        "name": "Malankara Dam",
-        "district": "Idukki",
+
+    "Malankara Dam": {
         "lat": 9.7804,
         "lon": 76.8787,
         "level": 67,
@@ -438,13 +251,12 @@ dams = pd.DataFrame([
         "outflow": 95,
         "rainfall": 41,
         "shutters": 6,
-        "open_shutters": 1,
+        "open": 1,
         "opening": 10,
         "risk": "Normal"
     },
-    {
-        "name": "Bhoothathankettu",
-        "district": "Ernakulam",
+
+    "Bhoothathankettu": {
         "lat": 10.1457,
         "lon": 76.6788,
         "level": 61,
@@ -452,13 +264,12 @@ dams = pd.DataFrame([
         "outflow": 80,
         "rainfall": 36,
         "shutters": 5,
-        "open_shutters": 1,
+        "open": 1,
         "opening": 10,
         "risk": "Normal"
     },
-    {
-        "name": "Pamba Dam",
-        "district": "Pathanamthitta",
+
+    "Pamba Dam": {
         "lat": 9.3805,
         "lon": 76.9275,
         "level": 64,
@@ -466,13 +277,12 @@ dams = pd.DataFrame([
         "outflow": 170,
         "rainfall": 39,
         "shutters": 6,
-        "open_shutters": 1,
+        "open": 1,
         "opening": 12,
         "risk": "Normal"
     },
-    {
-        "name": "Kakki Dam",
-        "district": "Pathanamthitta",
+
+    "Kakki Dam": {
         "lat": 9.3500,
         "lon": 77.0000,
         "level": 70,
@@ -480,13 +290,12 @@ dams = pd.DataFrame([
         "outflow": 190,
         "rainfall": 44,
         "shutters": 4,
-        "open_shutters": 1,
+        "open": 1,
         "opening": 15,
         "risk": "Normal"
     },
-    {
-        "name": "Neyyar Dam",
-        "district": "Thiruvananthapuram",
+
+    "Neyyar Dam": {
         "lat": 8.5350,
         "lon": 77.1450,
         "level": 58,
@@ -494,13 +303,12 @@ dams = pd.DataFrame([
         "outflow": 75,
         "rainfall": 31,
         "shutters": 4,
-        "open_shutters": 0,
+        "open": 0,
         "opening": 0,
         "risk": "Normal"
     },
-    {
-        "name": "Banasura Sagar Dam",
-        "district": "Wayanad",
+
+    "Banasura Sagar Dam": {
         "lat": 11.7000,
         "lon": 75.9500,
         "level": 63,
@@ -508,798 +316,751 @@ dams = pd.DataFrame([
         "outflow": 120,
         "rainfall": 52,
         "shutters": 4,
-        "open_shutters": 1,
+        "open": 1,
         "opening": 10,
         "risk": "Normal"
     }
-])
-
-# ============================================================
-# LOCATION DATABASE
-# ============================================================
-
-locations = {
-    "Kochi": {
-        "lat": 9.9312,
-        "lon": 76.2673
-    },
-    "Idukki": {
-        "lat": 9.8500,
-        "lon": 76.9700
-    },
-    "Munnar": {
-        "lat": 10.0889,
-        "lon": 77.0595
-    },
-    "Kothamangalam": {
-        "lat": 10.0580,
-        "lon": 76.6290
-    },
-    "Thodupuzha": {
-        "lat": 9.8950,
-        "lon": 76.7180
-    },
-    "Kottayam": {
-        "lat": 9.5916,
-        "lon": 76.5222
-    },
-    "Pathanamthitta": {
-        "lat": 9.2648,
-        "lon": 76.7870
-    },
-    "Alappuzha": {
-        "lat": 9.4981,
-        "lon": 76.3388
-    },
-    "Thiruvananthapuram": {
-        "lat": 8.5241,
-        "lon": 76.9366
-    },
-    "Wayanad": {
-        "lat": 11.6854,
-        "lon": 76.1320
-    }
 }
 
+
+locations = {
+    "Kochi": (9.9312, 76.2673),
+    "Idukki": (9.8500, 76.9700),
+    "Munnar": (10.0889, 77.0595),
+    "Kothamangalam": (10.0580, 76.6290),
+    "Thodupuzha": (9.8950, 76.7180),
+    "Kottayam": (9.5916, 76.5222),
+    "Pathanamthitta": (9.2648, 76.7870),
+    "Alappuzha": (9.4981, 76.3388),
+    "Thiruvananthapuram": (8.5241, 76.9366),
+    "Wayanad": (11.6854, 76.1320)
+}
+
+
 # ============================================================
-# HELPER FUNCTIONS
+# DISTANCE
 # ============================================================
 
 def distance_km(lat1, lon1, lat2, lon2):
-    earth_radius = 6371
+    radius = 6371
 
-    dlat = radians(lat2 - lat1)
-    dlon = radians(lon2 - lon1)
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
 
     a = (
-        sin(dlat / 2) ** 2
-        + cos(radians(lat1))
-        * cos(radians(lat2))
-        * sin(dlon / 2) ** 2
+        math.sin(dlat / 2) ** 2
+        + math.cos(p1)
+        * math.cos(p2)
+        * math.sin(dlon / 2) ** 2
     )
 
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-    return earth_radius * c
+    return radius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 def get_nearby_dams(location_name, radius=120):
+    lat, lon = locations[location_name]
 
-    location = locations[location_name]
+    nearby = []
 
-    result = dams.copy()
+    for name, dam in dams.items():
 
-    result["distance"] = result.apply(
-        lambda row: distance_km(
-            location["lat"],
-            location["lon"],
-            row["lat"],
-            row["lon"]
-        ),
-        axis=1
+        distance = distance_km(
+            lat,
+            lon,
+            dam["lat"],
+            dam["lon"]
+        )
+
+        if distance <= radius:
+            nearby.append(
+                {
+                    "name": name,
+                    "distance": distance,
+                    **dam
+                }
+            )
+
+    return sorted(nearby, key=lambda x: x["distance"])
+
+
+# ============================================================
+# OPENWEATHER API
+# ============================================================
+
+try:
+    OPENWEATHER_API_KEY = st.secrets["OPENWEATHER_API_KEY"]
+except Exception:
+    OPENWEATHER_API_KEY = None
+
+
+@st.cache_data(ttl=600)
+def get_weather(lat, lon):
+
+    if not OPENWEATHER_API_KEY:
+        return {
+            "success": False,
+            "error": "OpenWeather API key is not configured."
+        }
+
+    url = "https://api.openweathermap.org/data/2.5/weather"
+
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "appid": OPENWEATHER_API_KEY,
+        "units": "metric"
+    }
+
+    try:
+
+        response = requests.get(
+            url,
+            params=params,
+            timeout=10
+        )
+
+        if response.status_code == 200:
+
+            data = response.json()
+
+            rainfall = data.get("rain", {}).get("1h", 0)
+
+            return {
+                "success": True,
+                "temperature": data["main"]["temp"],
+                "feels_like": data["main"]["feels_like"],
+                "humidity": data["main"]["humidity"],
+                "pressure": data["main"]["pressure"],
+                "wind": data["wind"]["speed"],
+                "rainfall": rainfall,
+                "description": data["weather"][0]["description"],
+                "main": data["weather"][0]["main"],
+                "icon": data["weather"][0]["icon"],
+                "city": data.get("name", "Unknown")
+            }
+
+        if response.status_code == 401:
+            return {
+                "success": False,
+                "error": "Invalid OpenWeather API key."
+            }
+
+        if response.status_code == 429:
+            return {
+                "success": False,
+                "error": "OpenWeather API rate limit reached."
+            }
+
+        return {
+            "success": False,
+            "error": f"Weather API error: {response.status_code}"
+        }
+
+    except requests.exceptions.RequestException:
+        return {
+            "success": False,
+            "error": "Unable to connect to OpenWeather."
+        }
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def metric_card(label, value, small=""):
+    st.markdown(
+        f"""
+        <div class="metric-card">
+            <div class="metric-label">{label}</div>
+            <div class="metric-value">{value}</div>
+            <div class="metric-small">{small}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
-    result = result[
-        result["distance"] <= radius
-    ].sort_values("distance")
 
-    return result
+def risk_class(risk):
+
+    if risk == "Normal":
+        return "status-normal"
+
+    if risk == "Moderate":
+        return "status-moderate"
+
+    if risk == "High":
+        return "status-high"
+
+    return "status-critical"
 
 
-def metric_card(label, value, unit="", status="", status_class="status-normal"):
+def water_chart(level):
 
-    return (
-        '<div class="metric-card">'
-        f'<div class="metric-label">{label}</div>'
-        f'<div class="metric-value">{value} '
-        f'<span class="metric-unit">{unit}</span></div>'
-        f'<div class="metric-status {status_class}">{status}</div>'
-        '</div>'
+    hours = np.arange(0, 13)
+
+    values = (
+        level
+        + np.sin(hours / 2) * 0.7
+        + np.linspace(0, 2.5, len(hours))
     )
-
-
-def water_chart():
-
-    levels = [
-        81.2,
-        81.5,
-        82.0,
-        82.4,
-        83.0,
-        83.8,
-        84.5,
-        85.4,
-        86.1,
-        86.7,
-        87.3,
-        87.7,
-        88.0
-    ]
-
-    hours = list(range(13))
 
     fig = go.Figure()
 
     fig.add_trace(
         go.Scatter(
             x=hours,
-            y=levels,
+            y=values,
             mode="lines+markers",
-            line=dict(width=3),
-            fill="tozeroy",
-            fillcolor="rgba(50,190,240,0.08)",
             name="Water Level"
         )
     )
 
-    fig.add_hline(
-        y=90,
-        line_dash="dash",
-        annotation_text="Alert"
-    )
-
-    fig.add_hline(
-        y=95,
-        line_dash="dash",
-        annotation_text="Critical"
-    )
-
     fig.update_layout(
-        height=330,
-        margin=dict(l=10, r=10, t=20, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#b8cad5"),
-        xaxis=dict(
-            title="Hours",
-            showgrid=False
-        ),
-        yaxis=dict(
-            title="Storage Level (%)",
-            gridcolor="rgba(255,255,255,0.06)"
-        )
+        title="Water-Level Trend",
+        xaxis_title="Forecast Hour",
+        yaxis_title="Water Level (%)",
+        template="plotly_dark",
+        height=350,
+        margin=dict(l=20, r=20, t=50, b=20)
     )
 
     return fig
+
 
 # ============================================================
 # NAVIGATION
 # ============================================================
 
-if "page" not in st.session_state:
-    st.session_state.page = "Dashboard"
+page = st.radio(
+    "",
+    [
+        "📊 Dashboard",
+        "🏞️ Dam Monitoring",
+        "🔮 Prediction",
+        "🌊 Flood Simulation",
+        "🚨 Emergency Center"
+    ],
+    horizontal=True
+)
 
-nav_cols = st.columns(5)
-
-nav_items = [
-    ("🏠", "Dashboard"),
-    ("💧", "Dam Monitoring"),
-    ("📈", "Prediction"),
-    ("🌊", "Flood Simulation"),
-    ("🚨", "Emergency Center")
-]
-
-for col, item in zip(nav_cols, nav_items):
-
-    icon, name = item
-
-    with col:
-
-        if st.button(
-            f"{icon}  {name}",
-            key=f"nav_{name}"
-        ):
-            st.session_state.page = name
-            st.rerun()
-
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ============================================================
 # DASHBOARD
 # ============================================================
 
-def dashboard():
-
-    # --------------------------------------------------------
-    # LOCATION SELECTOR
-    # --------------------------------------------------------
+if page == "📊 Dashboard":
 
     st.markdown(
-        '<div class="location-card">'
-        '<div class="location-title">📍 Find Dams Near You</div>'
-        '<div class="location-subtitle">'
-        'Select your location and HYDROSCOPE will identify nearby '
-        'monitored dams and display their current status.'
-        '</div>'
-        '</div>',
+        '<div class="section-title">📍 Select Monitoring Location</div>',
         unsafe_allow_html=True
     )
-
-    location_names = list(locations.keys())
 
     selected_location = st.selectbox(
-        "Select your location",
-        location_names,
-        index=0,
-        key="location_selector"
+        "Location",
+        list(locations.keys())
     )
 
-    nearby = get_nearby_dams(
-        selected_location,
-        radius=120
-    )
-
-    # --------------------------------------------------------
-    # LOCATION RESULT
-    # --------------------------------------------------------
-
-    loc = locations[selected_location]
+    lat, lon = locations[selected_location]
 
     st.markdown(
-        '<div class="glass-card">'
-        f'<div class="section-title">📍 {selected_location}</div>'
-        '<div class="section-description">'
-        f'Latitude: {loc["lat"]:.4f} &nbsp;&nbsp; '
-        f'Longitude: {loc["lon"]:.4f}'
-        '</div>'
-        '</div>',
+        f"""
+        <div class="info-box">
+            <b>{selected_location}</b><br>
+            Coordinates: {lat:.4f}, {lon:.4f}<br>
+            Monitoring radius: 120 km
+        </div>
+        """,
         unsafe_allow_html=True
     )
 
     # --------------------------------------------------------
-    # MAP + NEARBY DAMS
+    # LIVE WEATHER
     # --------------------------------------------------------
 
-    map_col, dams_col = st.columns([1.45, 1])
+    st.markdown(
+        '<div class="section-title">🌦️ Live Weather</div>',
+        unsafe_allow_html=True
+    )
 
-    with map_col:
+    weather = get_weather(lat, lon)
 
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">🗺️ Nearby Dam Network</div>'
-            '<div class="section-description">'
-            'Dams within 120 km of the selected location.'
-            '</div>',
-            unsafe_allow_html=True
-        )
+    if weather["success"]:
 
-        m = folium.Map(
-            location=[
-                loc["lat"],
-                loc["lon"]
-            ],
-            zoom_start=9,
-            tiles="CartoDB dark_matter"
-        )
+        w1, w2, w3, w4, w5 = st.columns(5)
 
-        # USER LOCATION
-
-        folium.Marker(
-            location=[
-                loc["lat"],
-                loc["lon"]
-            ],
-            tooltip=f"📍 {selected_location}",
-            popup=f"Selected location: {selected_location}",
-            icon=folium.Icon(
-                color="blue",
-                icon="user",
-                prefix="fa"
-            )
-        ).add_to(m)
-
-        # RADIUS
-
-        folium.Circle(
-            location=[
-                loc["lat"],
-                loc["lon"]
-            ],
-            radius=120000,
-            color="#4bdcff",
-            fill=True,
-            fill_opacity=0.025,
-            weight=1
-        ).add_to(m)
-
-        # DAMS
-
-        for _, dam in nearby.iterrows():
-
-            if dam["risk"] == "Critical":
-                marker_color = "red"
-
-            elif dam["risk"] == "Moderate":
-                marker_color = "orange"
-
-            else:
-                marker_color = "green"
-
-            popup = (
-                f"<b>{dam['name']}</b><br>"
-                f"District: {dam['district']}<br>"
-                f"Distance: {dam['distance']:.1f} km<br>"
-                f"Water Level: {dam['level']}%<br>"
-                f"Risk: {dam['risk']}"
+        with w1:
+            metric_card(
+                "Temperature",
+                f'{weather["temperature"]:.1f} °C',
+                weather["description"]
             )
 
-            folium.Marker(
-                location=[
-                    dam["lat"],
-                    dam["lon"]
-                ],
-                tooltip=dam["name"],
-                popup=popup,
-                icon=folium.Icon(
-                    color=marker_color,
-                    icon="tint",
-                    prefix="fa"
-                )
-            ).add_to(m)
+        with w2:
+            metric_card(
+                "Rainfall",
+                f'{weather["rainfall"]:.1f} mm/h',
+                "Last 1 hour"
+            )
 
-        st_folium(
-            m,
-            width=None,
-            height=500
-        )
+        with w3:
+            metric_card(
+                "Humidity",
+                f'{weather["humidity"]} %',
+                "Relative humidity"
+            )
 
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
+        with w4:
+            metric_card(
+                "Wind",
+                f'{weather["wind"]:.1f} m/s',
+                "Current wind"
+            )
+
+        with w5:
+            metric_card(
+                "Pressure",
+                f'{weather["pressure"]} hPa',
+                "Atmospheric pressure"
+            )
+
+    else:
+
+        st.warning(
+            f'🌦️ Live weather unavailable: {weather["error"]}'
         )
 
     # --------------------------------------------------------
-    # NEARBY DAM LIST
+    # MAP
     # --------------------------------------------------------
 
-    with dams_col:
+    st.markdown(
+        '<div class="section-title">🗺️ Dam Network</div>',
+        unsafe_allow_html=True
+    )
 
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            f'💧 Dams Near {selected_location}'
-            '</div>'
-            '<div class="section-description">'
-            f'{len(nearby)} monitored dam(s) found nearby.'
-            '</div>',
-            unsafe_allow_html=True
+    nearby = get_nearby_dams(selected_location)
+
+    m = folium.Map(
+        location=[lat, lon],
+        zoom_start=8,
+        tiles="CartoDB dark_matter"
+    )
+
+    folium.Marker(
+        [lat, lon],
+        popup=f"📍 {selected_location}",
+        tooltip="Selected Location",
+        icon=folium.Icon(
+            color="blue",
+            icon="user"
         )
+    ).add_to(m)
 
-        if len(nearby) == 0:
+    folium.Circle(
+        [lat, lon],
+        radius=120000,
+        color="#00aaff",
+        fill=True,
+        fill_opacity=0.05
+    ).add_to(m)
 
-            st.info(
-                "No monitored dams found within 120 km."
-            )
+    for dam in nearby:
+
+        if dam["risk"] == "Normal":
+            marker_color = "green"
+
+        elif dam["risk"] == "Moderate":
+            marker_color = "orange"
 
         else:
+            marker_color = "red"
 
-            for _, dam in nearby.iterrows():
+        folium.Marker(
+            [dam["lat"], dam["lon"]],
+            popup=(
+                f'<b>{dam["name"]}</b><br>'
+                f'Water Level: {dam["level"]}%<br>'
+                f'Risk: {dam["risk"]}<br>'
+                f'Distance: {dam["distance"]:.1f} km'
+            ),
+            tooltip=dam["name"],
+            icon=folium.Icon(
+                color=marker_color,
+                icon="tint"
+            )
+        ).add_to(m)
 
-                risk_class_name = (
-                    "status-warning"
-                    if dam["risk"] == "Moderate"
-                    else
-                    "status-danger"
-                    if dam["risk"] == "High"
-                    else
-                    "status-normal"
-                )
+    st_folium(
+        m,
+        width=None,
+        height=550
+    )
+
+    # --------------------------------------------------------
+    # NEARBY DAMS
+    # --------------------------------------------------------
+
+    st.markdown(
+        '<div class="section-title">🏞️ Nearby Dams</div>',
+        unsafe_allow_html=True
+    )
+
+    if nearby:
+
+        for dam in nearby:
+
+            col1, col2, col3, col4 = st.columns(
+                [3, 1.5, 1.5, 1]
+            )
+
+            with col1:
 
                 st.markdown(
-                    '<div class="dam-card">'
-                    f'<div class="dam-name">💧 {dam["name"]}</div>'
-                    f'<div class="dam-location">'
-                    f'{dam["district"]}, Kerala'
-                    '</div>'
-                    f'<div class="dam-distance">'
-                    f'📍 {dam["distance"]:.1f} km away'
-                    '</div>'
-                    f'<div class="dam-level">'
-                    f'{dam["level"]}%'
-                    '</div>'
-                    '<div class="dam-small">Current water level</div>'
-                    f'<div class="{risk_class_name}" '
-                    'style="margin-top:8px;">'
-                    f'● {dam["risk"]} Risk'
-                    '</div>'
-                    '</div>',
+                    f"""
+                    <div class="dam-card">
+                        <b>💧 {dam["name"]}</b><br>
+                        <span style="color:#8faabd;">
+                        {dam["distance"]:.1f} km from {selected_location}
+                        </span>
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
 
+            with col2:
+
+                st.metric(
+                    "Water",
+                    f'{dam["level"]}%'
+                )
+
+            with col3:
+
+                st.markdown(
+                    f"""
+                    <div style="padding-top:12px;">
+                    Risk:
+                    <span class="{risk_class(dam["risk"])}">
+                    {dam["risk"]}
+                    </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            with col4:
+
                 if st.button(
-                    f"View {dam['name']}",
+                    "View",
                     key=f"view_{dam['name']}"
                 ):
 
-                    st.session_state.selected_dam = dam["name"]
-                    st.session_state.page = "Dam Monitoring"
-                    st.rerun()
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
+                    st.session_state["selected_dam"] = dam["name"]
+                    st.success(
+                        f'{dam["name"]} selected. Open Dam Monitoring.'
+                    )
 
     # --------------------------------------------------------
     # SYSTEM OVERVIEW
     # --------------------------------------------------------
 
     st.markdown(
-        '<div class="section-title">System Overview</div>'
-        '<div class="section-description">'
-        'Current network-level monitoring status.'
-        '</div>',
+        '<div class="section-title">📡 System Overview</div>',
         unsafe_allow_html=True
     )
 
-    total_dams = len(dams)
+    avg_level = np.mean(
+        [dam["level"] for dam in dams.values()]
+    )
 
-    avg_level = dams["level"].mean()
+    total_inflow = sum(
+        dam["inflow"] for dam in dams.values()
+    )
 
-    total_inflow = dams["inflow"].sum()
+    total_outflow = sum(
+        dam["outflow"] for dam in dams.values()
+    )
 
-    attention = len(
-        dams[
-            dams["risk"].isin(
-                ["Moderate", "High", "Critical"]
-            )
-        ]
+    moderate_count = sum(
+        1 for dam in dams.values()
+        if dam["risk"] == "Moderate"
     )
 
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-        st.markdown(
-            metric_card(
-                "Dams Monitored",
-                total_dams,
-                "",
-                "● System online",
-                "status-normal"
-            ),
-            unsafe_allow_html=True
+        metric_card(
+            "Dams Monitored",
+            len(dams),
+            "Prototype network"
         )
 
     with c2:
-        st.markdown(
-            metric_card(
-                "Average Storage",
-                f"{avg_level:.1f}",
-                "%",
-                "● Network average",
-                "status-normal"
-            ),
-            unsafe_allow_html=True
+        metric_card(
+            "Average Water",
+            f"{avg_level:.1f}%",
+            "Network average"
         )
 
     with c3:
-        st.markdown(
-            metric_card(
-                "Total Inflow",
-                f"{total_inflow:,}",
-                "m³/s",
-                "● Monitoring active",
-                "status-normal"
-            ),
-            unsafe_allow_html=True
+        metric_card(
+            "Total Inflow",
+            f"{total_inflow:,} m³/s",
+            "Prototype values"
         )
 
     with c4:
-        st.markdown(
-            metric_card(
-                "Attention Required",
-                attention,
-                "",
-                "● Requires monitoring",
-                "status-warning"
-            ),
-            unsafe_allow_html=True
+        metric_card(
+            "Attention Required",
+            moderate_count,
+            "Moderate-risk dams"
         )
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">📈 Network Water Levels</div>',
+        unsafe_allow_html=True
+    )
 
-    left, right = st.columns([1.5, 1])
+    network_df = pd.DataFrame(
+        {
+            "Dam": list(dams.keys()),
+            "Water Level": [
+                d["level"] for d in dams.values()
+            ]
+        }
+    )
 
-    with left:
+    fig = go.Figure()
 
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '📈 Network Water-Level Trend'
-            '</div>'
-            '<div class="section-description">'
-            'Demonstration monitoring data.'
-            '</div>',
-            unsafe_allow_html=True
+    fig.add_trace(
+        go.Bar(
+            x=network_df["Dam"],
+            y=network_df["Water Level"],
+            name="Water Level"
         )
+    )
 
-        st.plotly_chart(
-            water_chart(),
-            use_container_width=True
-        )
+    fig.update_layout(
+        template="plotly_dark",
+        height=400,
+        yaxis_title="Water Level (%)",
+        xaxis_title="Dam"
+    )
 
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-    with right:
-
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '⚠️ Monitoring Status'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            '<div class="alert-card alert-normal">'
-            '<b>🟢 Monitoring Network</b><br>'
-            '<span style="color:#849aaa;">'
-            'All prototype monitoring modules are operational.'
-            '</span>'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            '<div class="alert-card alert-warning">'
-            '<b>🟡 Idukki Dam</b><br>'
-            '<span style="color:#849aaa;">'
-            'Storage requires continued monitoring.'
-            '</span>'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            '<div class="alert-card alert-normal">'
-            '<b>🟢 Rainfall Network</b><br>'
-            '<span style="color:#849aaa;">'
-            'Monitoring data available.'
-            '</span>'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
 
 
 # ============================================================
 # DAM MONITORING
 # ============================================================
 
-def dam_monitoring():
+elif page == "🏞️ Dam Monitoring":
 
     st.markdown(
-        '<div class="section-title">💧 Dam Monitoring</div>'
-        '<div class="section-description">'
-        'Detailed monitoring of water level, rainfall, inflow, '
-        'outflow and shutter configuration.'
-        '</div>',
+        '<div class="section-title">🏞️ Dam Monitoring</div>',
         unsafe_allow_html=True
     )
 
-    if "selected_dam" in st.session_state:
-        default_dam = st.session_state.selected_dam
-    else:
-        default_dam = dams.iloc[0]["name"]
-
-    dam_names = dams["name"].tolist()
-
-    selected_index = (
-        dam_names.index(default_dam)
-        if default_dam in dam_names
-        else 0
+    default_dam = st.session_state.get(
+        "selected_dam",
+        "Idukki Dam"
     )
 
-    selected = st.selectbox(
+    dam_name = st.selectbox(
         "Select Dam",
-        dam_names,
-        index=selected_index
+        list(dams.keys()),
+        index=list(dams.keys()).index(default_dam)
     )
 
-    dam = dams[dams["name"] == selected].iloc[0]
+    dam = dams[dam_name]
 
-    left, right = st.columns([1.2, 1])
+    # --------------------------------------------------------
+    # DAM MAP
+    # --------------------------------------------------------
 
-    with left:
+    m = folium.Map(
+        location=[dam["lat"], dam["lon"]],
+        zoom_start=10,
+        tiles="CartoDB dark_matter"
+    )
 
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">📍 Dam Location</div>',
-            unsafe_allow_html=True
+    folium.Marker(
+        [dam["lat"], dam["lon"]],
+        popup=dam_name,
+        tooltip=dam_name,
+        icon=folium.Icon(
+            color="blue",
+            icon="tint"
         )
+    ).add_to(m)
 
-        m = folium.Map(
-            location=[
-                dam["lat"],
-                dam["lon"]
-            ],
-            zoom_start=11,
-            tiles="CartoDB dark_matter"
-        )
+    st_folium(
+        m,
+        width=None,
+        height=420
+    )
 
-        folium.Marker(
-            location=[
-                dam["lat"],
-                dam["lon"]
-            ],
-            tooltip=dam["name"],
-            popup=dam["name"],
-            icon=folium.Icon(
-                color="blue",
-                icon="tint",
-                prefix="fa"
-            )
-        ).add_to(m)
-
-        st_folium(
-            m,
-            width=None,
-            height=430
-        )
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-    with right:
-
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '📊 Current Condition'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        a, b = st.columns(2)
-
-        with a:
-
-            st.markdown(
-                metric_card(
-                    "Water Level",
-                    dam["level"],
-                    "%",
-                    "Current storage",
-                    "status-warning"
-                    if dam["level"] >= 85
-                    else "status-normal"
-                ),
-                unsafe_allow_html=True
-            )
-
-        with b:
-
-            st.markdown(
-                metric_card(
-                    "Rainfall",
-                    dam["rainfall"],
-                    "mm/hr",
-                    "Current intensity",
-                    "status-warning"
-                    if dam["rainfall"] >= 60
-                    else "status-normal"
-                ),
-                unsafe_allow_html=True
-            )
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        a, b = st.columns(2)
-
-        with a:
-
-            st.markdown(
-                metric_card(
-                    "Inflow",
-                    f"{dam['inflow']:,}",
-                    "m³/s",
-                    "Incoming flow",
-                    "status-normal"
-                ),
-                unsafe_allow_html=True
-            )
-
-        with b:
-
-            st.markdown(
-                metric_card(
-                    "Outflow",
-                    f"{dam['outflow']:,}",
-                    "m³/s",
-                    "Released flow",
-                    "status-normal"
-                ),
-                unsafe_allow_html=True
-            )
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '🚪 Shutter Configuration'
-            '</div>'
-            '<div class="section-description">'
-            'Current prototype gate configuration.'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        shutters_html = ""
-
-        for i in range(int(dam["shutters"])):
-
-            if i < int(dam["open_shutters"]):
-                shutters_html += '<div class="shutter open"></div>'
-            else:
-                shutters_html += '<div class="shutter"></div>'
-
-        st.markdown(
-            '<div style="text-align:center;">'
-            + shutters_html
-            + '</div>'
-            + '<div style="text-align:center;'
-            'margin-top:12px;color:#849aaa;font-size:13px;">'
-            f'{int(dam["open_shutters"])} of '
-            f'{int(dam["shutters"])} shutters open • '
-            f'{dam["opening"]}% opening'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
+    # --------------------------------------------------------
+    # LIVE DAM WEATHER
+    # --------------------------------------------------------
 
     st.markdown(
-        '<div class="glass-card">'
-        '<div class="section-title">'
-        '📈 Water-Level History'
-        '</div>',
+        '<div class="section-title">🌧️ Live Conditions at Dam</div>',
         unsafe_allow_html=True
     )
+
+    dam_weather = get_weather(
+        dam["lat"],
+        dam["lon"]
+    )
+
+    if dam_weather["success"]:
+
+        w1, w2, w3, w4 = st.columns(4)
+
+        with w1:
+            metric_card(
+                "Temperature",
+                f'{dam_weather["temperature"]:.1f} °C',
+                dam_weather["description"]
+            )
+
+        with w2:
+            metric_card(
+                "Live Rainfall",
+                f'{dam_weather["rainfall"]:.1f} mm/h',
+                "OpenWeather"
+            )
+
+        with w3:
+            metric_card(
+                "Humidity",
+                f'{dam_weather["humidity"]}%',
+                "Current"
+            )
+
+        with w4:
+            metric_card(
+                "Wind",
+                f'{dam_weather["wind"]:.1f} m/s',
+                "Current"
+            )
+
+    else:
+
+        st.warning(
+            f'Live dam weather unavailable: {dam_weather["error"]}'
+        )
+
+    # --------------------------------------------------------
+    # DAM METRICS
+    # --------------------------------------------------------
+
+    st.markdown(
+        '<div class="section-title">📊 Current Dam Status</div>',
+        unsafe_allow_html=True
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        metric_card(
+            "Water Level",
+            f'{dam["level"]}%',
+            "Prototype monitoring value"
+        )
+
+    with c2:
+        metric_card(
+            "Inflow",
+            f'{dam["inflow"]:,} m³/s',
+            "Prototype value"
+        )
+
+    with c3:
+        metric_card(
+            "Outflow",
+            f'{dam["outflow"]:,} m³/s',
+            "Prototype value"
+        )
+
+    with c4:
+        metric_card(
+            "Risk",
+            dam["risk"],
+            "Decision-support status"
+        )
+
+    # --------------------------------------------------------
+    # SHUTTERS
+    # --------------------------------------------------------
+
+    st.markdown(
+        '<div class="section-title">🚪 Shutter Status</div>',
+        unsafe_allow_html=True
+    )
+
+    shutter_cols = st.columns(
+        min(dam["shutters"], 8)
+    )
+
+    for i in range(dam["shutters"]):
+
+        with shutter_cols[i]:
+
+            if i < dam["open"]:
+
+                st.markdown(
+                    """
+                    <div style="
+                        text-align:center;
+                        padding:18px 5px;
+                        border-radius:14px;
+                        background:rgba(0,150,255,0.22);
+                        border:1px solid rgba(0,180,255,0.35);
+                    ">
+                    🚪<br>
+                    <b>OPEN</b>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            else:
+
+                st.markdown(
+                    """
+                    <div style="
+                        text-align:center;
+                        padding:18px 5px;
+                        border-radius:14px;
+                        background:rgba(255,255,255,0.05);
+                        border:1px solid rgba(255,255,255,0.10);
+                    ">
+                    🚪<br>
+                    <b>CLOSED</b>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+    st.write(
+        f'Current opening: **{dam["opening"]}%**'
+    )
+
+    # --------------------------------------------------------
+    # WATER CHART
+    # --------------------------------------------------------
 
     st.plotly_chart(
-        water_chart(),
+        water_chart(dam["level"]),
         use_container_width=True
-    )
-
-    st.markdown(
-        '</div>',
-        unsafe_allow_html=True
     )
 
 
@@ -1307,529 +1068,384 @@ def dam_monitoring():
 # PREDICTION
 # ============================================================
 
-def prediction():
+elif page == "🔮 Prediction":
 
     st.markdown(
-        '<div class="section-title">📈 Prediction Center</div>'
-        '<div class="section-description">'
-        'Estimate future water levels and controlled-release probability.'
-        '</div>',
+        '<div class="section-title">🔮 Water-Level & Release Prediction</div>',
         unsafe_allow_html=True
     )
 
-    selected = st.selectbox(
-        "Prediction Dam",
-        dams["name"].tolist()
+    dam_name = st.selectbox(
+        "Select Dam",
+        list(dams.keys())
     )
 
-    dam = dams[dams["name"] == selected].iloc[0]
+    dam = dams[dam_name]
 
-    probability = min(
-        95,
+    rainfall_factor = st.slider(
+        "Rainfall Scenario",
+        0.5,
+        2.5,
+        1.0,
+        0.1
+    )
+
+    hours = np.arange(0, 25)
+
+    predicted_levels = (
+        dam["level"]
+        + (dam["inflow"] / 1000)
+        * rainfall_factor
+        * np.sqrt(hours)
+        * 0.55
+    )
+
+    final_level = predicted_levels[-1]
+
+    release_probability = min(
+        99,
         max(
-            10,
+            5,
             int(
-                dam["level"] * 0.65
-                + dam["rainfall"] * 0.25
+                dam["level"] * 0.7
+                + rainfall_factor * 15
             )
         )
-    )
-
-    predicted = min(
-        99,
-        dam["level"] + int(dam["rainfall"] / 20)
     )
 
     c1, c2, c3 = st.columns(3)
 
     with c1:
-
-        st.markdown(
-            metric_card(
-                "Current Level",
-                dam["level"],
-                "%",
-                "Baseline",
-                "status-normal"
-            ),
-            unsafe_allow_html=True
+        metric_card(
+            "Current Level",
+            f'{dam["level"]}%',
+            dam_name
         )
 
     with c2:
-
-        st.markdown(
-            metric_card(
-                "Release Probability",
-                probability,
-                "%",
-                "Decision-support estimate",
-                "status-warning"
-            ),
-            unsafe_allow_html=True
+        metric_card(
+            "Predicted Level",
+            f"{final_level:.1f}%",
+            "24-hour prototype forecast"
         )
 
     with c3:
-
-        st.markdown(
-            metric_card(
-                "Predicted Level",
-                predicted,
-                "%",
-                "Next prediction window",
-                "status-warning"
-            ),
-            unsafe_allow_html=True
+        metric_card(
+            "Release Probability",
+            f"{release_probability}%",
+            "Prototype decision indicator"
         )
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    fig = go.Figure()
 
-    left, right = st.columns([1.5, 1])
-
-    with left:
-
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '🔮 Water-Level Forecast'
-            '</div>',
-            unsafe_allow_html=True
+    fig.add_trace(
+        go.Scatter(
+            x=hours,
+            y=predicted_levels,
+            mode="lines+markers",
+            name="Predicted Level"
         )
+    )
 
-        future = list(range(13))
+    fig.add_hline(
+        y=90,
+        line_dash="dash",
+        annotation_text="Illustrative Alert Level"
+    )
 
-        values = []
+    fig.update_layout(
+        template="plotly_dark",
+        height=450,
+        xaxis_title="Hours Ahead",
+        yaxis_title="Water Level (%)"
+    )
 
-        for hour in future:
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
 
-            value = (
-                dam["level"]
-                + hour * 0.35
-                + np.sin(hour / 2) * 0.35
-            )
-
-            values.append(
-                min(100, value)
-            )
-
-        fig = go.Figure()
-
-        fig.add_trace(
-            go.Scatter(
-                x=future,
-                y=values,
-                mode="lines+markers",
-                line=dict(width=3),
-                name="Predicted Level"
-            )
-        )
-
-        fig.add_hline(
-            y=90,
-            line_dash="dash",
-            annotation_text="Alert"
-        )
-
-        fig.add_hline(
-            y=95,
-            line_dash="dash",
-            annotation_text="Critical"
-        )
-
-        fig.update_layout(
-            height=350,
-            margin=dict(l=10, r=10, t=20, b=10),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#b8cad5"),
-            xaxis=dict(
-                title="Forecast Hours",
-                showgrid=False
-            ),
-            yaxis=dict(
-                title="Water Level (%)",
-                gridcolor="rgba(255,255,255,0.06)"
-            )
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-    with right:
-
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '🧠 Decision Support'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        if probability >= 75:
-
-            st.markdown(
-                '<div class="alert-card alert-warning">'
-                '<b>🟡 Elevated Release Probability</b><br><br>'
-                '<span style="color:#849aaa;">'
-                'Current prototype conditions indicate increased '
-                'probability of controlled release.'
-                '</span>'
-                '</div>',
-                unsafe_allow_html=True
-            )
-
-        else:
-
-            st.markdown(
-                '<div class="alert-card alert-normal">'
-                '<b>🟢 Normal Release Probability</b><br><br>'
-                '<span style="color:#849aaa;">'
-                'Current prototype conditions do not indicate '
-                'high release probability.'
-                '</span>'
-                '</div>',
-                unsafe_allow_html=True
-            )
-
-        st.markdown(
-            '<div style="margin-top:15px;padding:15px;'
-            'border-radius:14px;background:rgba(255,255,255,0.025);'
-            'color:#7f94a3;font-size:12px;">'
-            '⚠️ Prototype decision-support output. '
-            'This is not an autonomous dam-operation command.'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
+    st.markdown(
+        """
+        <div class="info-box">
+        ⚠️ <b>Decision Support Only</b><br><br>
+        The prediction shown here is a prototype model for
+        demonstration purposes. It does not represent an
+        official reservoir rule curve or authorize automatic
+        shutter operation.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # ============================================================
 # FLOOD SIMULATION
 # ============================================================
 
-def flood_simulation():
+elif page == "🌊 Flood Simulation":
 
     st.markdown(
-        '<div class="section-title">🌊 Flood Simulation</div>'
-        '<div class="section-description">'
-        'Simulate downstream flood propagation and potential impact.'
-        '</div>',
+        '<div class="section-title">🌊 Dam-Break & Downstream Flood Simulation</div>',
         unsafe_allow_html=True
     )
 
-    left, right = st.columns([1, 1.5])
+    dam_name = st.selectbox(
+        "Select Source Dam",
+        list(dams.keys())
+    )
 
-    with left:
+    dam = dams[dam_name]
 
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '⚙️ Simulation Parameters'
-            '</div>',
-            unsafe_allow_html=True
+    breach = st.slider(
+        "Breach Severity",
+        10,
+        100,
+        50,
+        5
+    )
+
+    rainfall_factor = st.slider(
+        "Rainfall Amplification",
+        1.0,
+        3.0,
+        1.0,
+        0.1
+    )
+
+    duration = st.slider(
+        "Simulation Duration (hours)",
+        1,
+        24,
+        6
+    )
+
+    peak_flow = (
+        dam["outflow"]
+        + dam["inflow"]
+        * (breach / 100)
+        * rainfall_factor
+    )
+
+    arrival_time = max(
+        0.5,
+        8
+        - breach / 18
+        - rainfall_factor
+    )
+
+    affected_population = int(
+        5000
+        + peak_flow * 7
+        + breach * 80
+    )
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        metric_card(
+            "Estimated Peak Flow",
+            f"{peak_flow:,.0f} m³/s",
+            "Prototype simulation"
         )
 
-        selected = st.selectbox(
-            "Source Dam",
-            dams["name"].tolist()
+    with c2:
+        metric_card(
+            "First Arrival",
+            f"{arrival_time:.1f} h",
+            "Estimated downstream arrival"
         )
 
-        dam = dams[dams["name"] == selected].iloc[0]
-
-        breach = st.slider(
-            "Breach Severity",
-            10,
-            100,
-            40
+    with c3:
+        metric_card(
+            "Potentially Affected",
+            f"{affected_population:,}",
+            "Illustrative population"
         )
 
-        rainfall_factor = st.slider(
-            "Rainfall Factor",
-            0.5,
-            2.0,
-            1.0,
-            0.1
+    # --------------------------------------------------------
+    # FLOOD PROPAGATION GRAPH
+    # --------------------------------------------------------
+
+    hours = np.linspace(
+        0,
+        duration,
+        100
+    )
+
+    flow = (
+        peak_flow
+        * np.exp(
+            -((hours - arrival_time) ** 2)
+            / max(0.2, duration / 3)
         )
+    )
 
-        duration = st.slider(
-            "Simulation Duration",
-            1,
-            24,
-            12
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=hours,
+            y=flow,
+            fill="tozeroy",
+            name="Flood Flow"
         )
+    )
 
-        simulate = st.button(
-            "🌊 RUN FLOOD SIMULATION"
-        )
+    fig.update_layout(
+        template="plotly_dark",
+        height=420,
+        xaxis_title="Time (hours)",
+        yaxis_title="Flow (m³/s)"
+    )
 
-        st.markdown(
-            '<div style="margin-top:15px;color:#627584;'
-            'font-size:11px;">'
-            'Simplified prototype flood model for demonstration.'
-            '</div>',
-            unsafe_allow_html=True
-        )
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
 
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
+    # --------------------------------------------------------
+    # DOWNSTREAM IMPACT
+    # --------------------------------------------------------
 
-    with right:
+    st.markdown(
+        '<div class="section-title">🏘️ Potential Downstream Impact</div>',
+        unsafe_allow_html=True
+    )
 
-        st.markdown(
-            '<div class="glass-card">'
-            '<div class="section-title">'
-            '📊 Simulated Impact'
-            '</div>',
-            unsafe_allow_html=True
-        )
+    impact_data = pd.DataFrame(
+        {
+            "Zone": [
+                "Immediate Zone",
+                "Downstream Zone 1",
+                "Downstream Zone 2",
+                "Extended Zone"
+            ],
+            "Estimated Arrival": [
+                f"{arrival_time:.1f} h",
+                f"{arrival_time + 1.2:.1f} h",
+                f"{arrival_time + 2.5:.1f} h",
+                f"{arrival_time + 4.0:.1f} h"
+            ],
+            "Risk": [
+                "Critical",
+                "High",
+                "Moderate",
+                "Low"
+            ]
+        }
+    )
 
-        if simulate:
+    st.dataframe(
+        impact_data,
+        use_container_width=True,
+        hide_index=True
+    )
 
-            peak_flow = (
-                dam["outflow"]
-                * (1 + breach / 100)
-                * rainfall_factor
-            )
-
-            arrival = max(
-                0.5,
-                6 - breach / 20
-            )
-
-            affected = int(
-                15000
-                * (breach / 100)
-                * rainfall_factor
-            )
-
-            st.markdown(
-                metric_card(
-                    "Peak Simulated Flow",
-                    f"{peak_flow:,.0f}",
-                    "m³/s",
-                    "Model output",
-                    "status-danger"
-                ),
-                unsafe_allow_html=True
-            )
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            a, b = st.columns(2)
-
-            with a:
-
-                st.markdown(
-                    metric_card(
-                        "Estimated Arrival",
-                        f"{arrival:.1f}",
-                        "hours",
-                        "Downstream estimate",
-                        "status-warning"
-                    ),
-                    unsafe_allow_html=True
-                )
-
-            with b:
-
-                st.markdown(
-                    metric_card(
-                        "Potentially Affected",
-                        f"{affected:,}",
-                        "people",
-                        "Prototype estimate",
-                        "status-danger"
-                    ),
-                    unsafe_allow_html=True
-                )
-
-        else:
-
-            st.markdown(
-                '<div style="padding:70px 20px;text-align:center;'
-                'color:#657b8b;">'
-                '🌊<br><br>'
-                'Configure the scenario and run the simulation.'
-                '</div>',
-                unsafe_allow_html=True
-            )
-
-        st.markdown(
-            '</div>',
-            unsafe_allow_html=True
-        )
+    st.markdown(
+        """
+        <div class="alert-box">
+        🚨 <b>Simulation Warning</b><br><br>
+        This is a simplified demonstration model.
+        Real flood propagation requires terrain elevation,
+        river geometry, hydraulic modelling, rainfall-runoff
+        modelling, reservoir bathymetry and validated
+        government datasets.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 # ============================================================
 # EMERGENCY CENTER
 # ============================================================
 
-def emergency_center():
+elif page == "🚨 Emergency Center":
 
     st.markdown(
-        '<div class="section-title">🚨 Emergency Center</div>'
-        '<div class="section-description">'
-        'Emergency intelligence, alerts and evacuation-support information.'
-        '</div>',
+        '<div class="section-title">🚨 Emergency Response Center</div>',
         unsafe_allow_html=True
     )
 
     st.markdown(
-        '<div class="alert-card alert-warning">'
-        '<b>🟡 DEMONSTRATION ALERT</b><br><br>'
-        'Idukki demonstration scenario is being monitored '
-        'due to elevated water-level conditions.'
-        '</div>',
+        """
+        <div class="alert-box">
+        <b>⚠️ HYDROSCOPE ALERT SYSTEM</b><br><br>
+        This panel is designed to support emergency
+        decision-making during extreme rainfall,
+        reservoir stress and downstream flood scenarios.
+        </div>
+        """,
         unsafe_allow_html=True
     )
 
-    c1, c2, c3 = st.columns(3)
+    st.markdown(
+        '<div class="section-title">📢 Active Alerts</div>',
+        unsafe_allow_html=True
+    )
 
-    with c1:
+    alerts = [
+        (
+            "🌧️ Heavy Rainfall",
+            "Monitor reservoir inflow and downstream river levels."
+        ),
+        (
+            "🌊 Rising Water Level",
+            "Review reservoir level prediction and release scenarios."
+        ),
+        (
+            "🚨 Flood Risk",
+            "Review affected zones and estimated arrival times."
+        )
+    ]
+
+    for title, message in alerts:
 
         st.markdown(
-            metric_card(
-                "Active Alerts",
-                1,
-                "",
-                "Monitoring alert",
-                "status-warning"
-            ),
+            f"""
+            <div class="dam-card">
+                <b>{title}</b><br>
+                <span style="color:#9bb7ca;">
+                {message}
+                </span>
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
-    with c2:
+    st.markdown(
+        '<div class="section-title">🧭 Emergency Checklist</div>',
+        unsafe_allow_html=True
+    )
 
-        st.markdown(
-            metric_card(
-                "Impact Zones",
-                3,
-                "",
-                "Prototype zones",
-                "status-warning"
-            ),
-            unsafe_allow_html=True
+    checklist = [
+        "Verify current rainfall and reservoir conditions",
+        "Check official dam operating instructions",
+        "Evaluate downstream flood propagation",
+        "Identify vulnerable villages and infrastructure",
+        "Coordinate with disaster-management authorities",
+        "Issue public warnings through authorized channels"
+    ]
+
+    for item in checklist:
+        st.checkbox(
+            item,
+            key=f"check_{item}"
         )
 
-    with c3:
-
-        st.markdown(
-            metric_card(
-                "Critical Assets",
-                7,
-                "",
-                "Prototype assets",
-                "status-warning"
-            ),
-            unsafe_allow_html=True
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
     st.markdown(
-        '<div class="glass-card">'
-        '<div class="section-title">'
-        '🆘 Emergency Response'
-        '</div>'
-        '<div class="section-description">'
-        'Prototype emergency-response controls.'
-        '</div>',
+        """
+        <div class="info-box">
+        🛡️ <b>Important:</b><br><br>
+        HYDROSCOPE is a decision-support prototype.
+        It does not independently operate dam shutters,
+        issue legally binding evacuation orders, or
+        replace authorized government control systems.
+        </div>
+        """,
         unsafe_allow_html=True
     )
-
-    a, b = st.columns(2)
-
-    with a:
-
-        if st.button("📢 Issue Warning Alert"):
-
-            st.warning(
-                "Prototype warning alert generated."
-            )
-
-        if st.button("📍 View Evacuation Zones"):
-
-            st.info(
-                "Evacuation-zone visualization will be connected "
-                "to the GIS flood model."
-            )
-
-    with b:
-
-        if st.button("🏘️ View Affected Settlements"):
-
-            st.info(
-                "Settlement-impact analysis will be connected "
-                "to downstream GIS data."
-            )
-
-        if st.button("🚑 Emergency Response Mode"):
-
-            st.error(
-                "Emergency response mode activated — prototype."
-            )
-
-    st.markdown(
-        '</div>',
-        unsafe_allow_html=True
-    )
-
-    st.markdown(
-        '<div class="glass-card">'
-        '<div class="section-title">'
-        '📋 Emergency Checklist'
-        '</div><br>'
-        '<div style="line-height:2;color:#a9bbc7;">'
-        '✓ Verify dam water level<br>'
-        '✓ Verify rainfall intensity<br>'
-        '✓ Verify inflow and outflow<br>'
-        '✓ Verify shutter configuration<br>'
-        '✓ Run downstream flood scenario<br>'
-        '✓ Identify affected settlements<br>'
-        '✓ Identify critical infrastructure<br>'
-        '✓ Issue appropriate warning<br>'
-        '✓ Coordinate evacuation response'
-        '</div>'
-        '</div>',
-        unsafe_allow_html=True
-    )
-
-
-# ============================================================
-# ROUTER
-# ============================================================
-
-if st.session_state.page == "Dashboard":
-
-    dashboard()
-
-elif st.session_state.page == "Dam Monitoring":
-
-    dam_monitoring()
-
-elif st.session_state.page == "Prediction":
-
-    prediction()
-
-elif st.session_state.page == "Flood Simulation":
-
-    flood_simulation()
-
-elif st.session_state.page == "Emergency Center":
-
-    emergency_center()
 
 
 # ============================================================
@@ -1837,10 +1453,11 @@ elif st.session_state.page == "Emergency Center":
 # ============================================================
 
 st.markdown(
-    '<div class="hydro-footer">'
-    'HYDROSCOPE • SMART INDIA HACKATHON PROTOTYPE<br><br>'
-    'Monitor → Predict → Simulate → Assess Impact → Alert<br><br>'
-    'Prototype data and model outputs are for demonstration purposes.'
-    '</div>',
+    """
+    <div class="footer">
+        💧 HYDROSCOPE • SMART INDIA HACKATHON PROTOTYPE<br>
+        Weather data provided by OpenWeather
+    </div>
+    """,
     unsafe_allow_html=True
 )

@@ -1,8 +1,7 @@
-streamlit>=1.50.0
-pandas
+streamlit>=1.45.0
+requests
 numpy
+pandas
 plotly
 folium
 streamlit-folium
-scikit-learn
-geopandas

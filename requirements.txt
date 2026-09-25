@@ -1,8 +1,10 @@
 streamlit
 pandas
 numpy
+requests
 plotly
 folium
 streamlit-folium
-requests
 scikit-learn
+beautifulsoup4
+lxml

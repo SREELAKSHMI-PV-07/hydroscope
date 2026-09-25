@@ -1,5 +1,6 @@
 import math
 import re
+from pathlib import Path
 from io import StringIO
 from urllib.parse import quote
 
@@ -10,7 +11,9 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, IsolationForest
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, r2_score
 from streamlit_folium import st_folium
 
@@ -704,7 +707,50 @@ def _history_filename(mirror_name):
 
 @st.cache_data(ttl=21600,show_spinner=False)
 def fetch_kseb_history(mirror_name):
-    """Load the auto-collected historical KSEB series for one reservoir."""
+    """Prefer the committed KSEB-history CSV, then fall back to the public mirror."""
+    # 1) Local committed dataset in the repository. This makes the GitHub CSV
+    # part of the reproducible ML pipeline rather than merely a display file.
+    local_path=Path(__file__).resolve().parent/"data"/"kseb_reservoir_history.csv"
+    if local_path.exists():
+        try:
+            local=pd.read_csv(local_path)
+            if "dam" in local.columns:
+                aliases={
+                    "Banasurasagar":"Banasura Sagar Dam",
+                    "Kakki (Anathode)":"Anathode Dam",
+                    "Kakki–Anathode":"Anathode Dam",
+                    "Kakkayam":"Kuttiyadi HE Project Dam",
+                    "Sholayar":"Sholayar Main Dam",
+                    "Madupetty":"Mattupetty Dam",
+                    "Chenkulam":"Sengulam Dam",
+                    "Lower Periyar":"Pambla Dam (Lower Periyar)",
+                    "Anathode":"Anathode Dam",
+                }
+                local["registry_dam"]=local["dam"].map(lambda x:aliases.get(str(x).strip(),str(x).strip()))
+                target=next((k for k,v in KSEB_NAME_TO_REGISTRY.items() if mirror_name and _norm_name(k)==_norm_name(mirror_name)),None)
+                target_registry=aliases.get(mirror_name,mirror_name)
+                if mirror_name in KERALA_DAM_REGISTRY:
+                    target_registry=mirror_name
+                subset=local[local["registry_dam"].map(_norm_name)==_norm_name(target_registry)].copy()
+                if len(subset)>=3:
+                    for col in ["date","water_level_m","storage_percentage","inflow_cumecs","total_outflow_cumecs","rainfall_mm"]:
+                        if col not in subset.columns:
+                            subset[col]=np.nan
+                    df=pd.DataFrame({
+                        "date":pd.to_datetime(subset["date"],dayfirst=True,errors="coerce"),
+                        "water_level":pd.to_numeric(subset["water_level_m"],errors="coerce"),
+                        "storage_pct":pd.to_numeric(subset["storage_percentage"],errors="coerce"),
+                        "inflow":pd.to_numeric(subset["inflow_cumecs"],errors="coerce"),
+                        "outflow":pd.to_numeric(subset["total_outflow_cumecs"],errors="coerce"),
+                        "rainfall":pd.to_numeric(subset["rainfall_mm"],errors="coerce")
+                    })
+                    df=df.dropna(subset=["date","water_level"]).sort_values("date")
+                    if not df.empty:
+                        return df.drop_duplicates("date",keep="last").reset_index(drop=True)
+        except Exception:
+            pass
+
+    # 2) Public machine-readable mirror fallback used by the prototype.
     if not mirror_name:
         return pd.DataFrame()
     url=KSEB_MIRROR_HISTORY_BASE+_history_filename(mirror_name)
@@ -852,93 +898,177 @@ LOCATION_DISTRICTS={
 }
 
 # ============================================================
-# AUTHORITY STRUCTURAL SAFETY — prototype assessment inputs
+# AUTHORITY STRUCTURAL SAFETY — evidence + real-data analysis
 # ============================================================
-# These values are explicitly marked as PROTOTYPE because the current app does
-# not have authorised structural-health/instrumentation feeds from each dam.
-# They are NOT official KSEB/CWC measurements and must be replaced before use.
-STRUCTURAL_DATABASE={
-    "Idukki Dam": {"construction_year":1976,"material":"Concrete / masonry","rehab_year":2018,"inspection_age_years":1.0,"crack_index":0.18,"crack_growth":0.03,"seepage_index":0.22,"seepage_growth":0.04,"deformation_index":0.16,"deformation_growth":0.02,"material_decay":0.12,"foundation_index":0.12,"seismic_index":0.10,"data_status":"PROTOTYPE"},
-    "Idamalayar Dam": {"construction_year":1987,"material":"Concrete","rehab_year":2019,"inspection_age_years":1.0,"crack_index":0.14,"crack_growth":0.02,"seepage_index":0.16,"seepage_growth":0.02,"deformation_index":0.13,"deformation_growth":0.02,"material_decay":0.10,"foundation_index":0.10,"seismic_index":0.08,"data_status":"PROTOTYPE"},
-    "Malankara Dam": {"construction_year":1987,"material":"Concrete / earthfill","rehab_year":2020,"inspection_age_years":1.0,"crack_index":0.12,"crack_growth":0.02,"seepage_index":0.15,"seepage_growth":0.03,"deformation_index":0.11,"deformation_growth":0.01,"material_decay":0.11,"foundation_index":0.11,"seismic_index":0.07,"data_status":"PROTOTYPE"},
-    "Bhoothathankettu": {"construction_year":1962,"material":"Concrete / masonry","rehab_year":2017,"inspection_age_years":1.0,"crack_index":0.20,"crack_growth":0.04,"seepage_index":0.24,"seepage_growth":0.04,"deformation_index":0.18,"deformation_growth":0.03,"material_decay":0.17,"foundation_index":0.15,"seismic_index":0.09,"data_status":"PROTOTYPE"},
-    "Pamba Dam": {"construction_year":1987,"material":"Concrete","rehab_year":2020,"inspection_age_years":1.0,"crack_index":0.13,"crack_growth":0.02,"seepage_index":0.17,"seepage_growth":0.02,"deformation_index":0.12,"deformation_growth":0.02,"material_decay":0.10,"foundation_index":0.11,"seismic_index":0.08,"data_status":"PROTOTYPE"},
-    "Kakki Dam": {"construction_year":1966,"material":"Concrete / masonry","rehab_year":2016,"inspection_age_years":1.0,"crack_index":0.19,"crack_growth":0.03,"seepage_index":0.21,"seepage_growth":0.03,"deformation_index":0.17,"deformation_growth":0.02,"material_decay":0.16,"foundation_index":0.14,"seismic_index":0.09,"data_status":"PROTOTYPE"},
-    "Neyyar Dam": {"construction_year":1959,"material":"Concrete / masonry","rehab_year":2015,"inspection_age_years":1.0,"crack_index":0.22,"crack_growth":0.04,"seepage_index":0.23,"seepage_growth":0.04,"deformation_index":0.20,"deformation_growth":0.03,"material_decay":0.19,"foundation_index":0.16,"seismic_index":0.08,"data_status":"PROTOTYPE"},
-    "Banasura Sagar Dam": {"construction_year":1979,"material":"Earthfill","rehab_year":2019,"inspection_age_years":1.0,"crack_index":0.15,"crack_growth":0.02,"seepage_index":0.18,"seepage_growth":0.03,"deformation_index":0.14,"deformation_growth":0.02,"material_decay":0.12,"foundation_index":0.12,"seismic_index":0.08,"data_status":"PROTOTYPE"},
+# Structural-health numbers are NEVER invented here. The module separates:
+# 1) documented public safety-audit / inspection evidence,
+# 2) actual structural/instrumentation time-series supplied to the app, and
+# 3) current reservoir loading from the KSEB/KSDMA operational layer.
+#
+# CWC/DRIP safety-audit evidence below is documentary evidence, not a structural
+# condition score. Actual crack/seepage/deformation measurements require the
+# underlying authorised inspection/instrumentation records.
+STRUCTURAL_AUDIT_SOURCE_URL="https://rsdebate.nic.in/bitstream/123456789/723090/1/PQ_255_13122021_S156_p34_p42.pdf"
+CWC_INSPECTION_GUIDELINE_URL="https://drip.cwc.gov.in/ecm-includes/PDFs/Guidelines_for_Safety_Inspection_of_Dams.pdf"
+CWC_STRUCTURAL_SAFETY_URL="https://drip.cwc.gov.in/ecm-includes/PDFs/Manual_for_Assessing_Structural_Safety.pdf"
+KSDMA_DAM_MANAGEMENT_URL="https://sdma.kerala.gov.in/dam-management/"
+MULLAPERIYAR_REPORT_URL="https://sdma.kerala.gov.in/wp-content/uploads/2019/08/Report-of-the-Expert-Group-Mullaperiyar-22-Nov-2011.pdf"
+
+# Dams recorded in the Government of India / DRIP-II & III preparatory safety-audit
+# list for November 2018-November 2021, mapped to our registry names.
+STRUCTURAL_AUDIT_DAMS={
+    "Anayirankal Dam":"DRIP safety audit recorded",
+    "Idamalayar Dam":"DRIP safety audit recorded",
+    "Idukki Dam":"DRIP safety audit recorded",
+    "Cheruthoni Dam":"DRIP safety audit recorded",
+    "Kulamavu Dam":"DRIP safety audit recorded",
+    "Kuttiyadi HE Project Dam":"DRIP safety audit recorded",
+    "Kakki Dam":"DRIP safety audit recorded",
+    "Anathode Dam":"DRIP safety audit recorded",
+    "Kallarkutty Dam":"DRIP safety audit recorded",
+    "Kundala Dam":"DRIP safety audit recorded",
+    "Mattupetty Dam":"DRIP safety audit recorded",
+    "Kuttiyadi Augmentation Main Dam":"DRIP safety audit recorded",
+    "Kuttiyadi Augmentation Spillway Dam":"DRIP safety audit recorded",
+    "Pambla Dam (Lower Periyar)":"DRIP safety audit recorded",
+    "Moozhiyar Dam":"DRIP safety audit recorded",
+    "Pamba Dam":"DRIP safety audit recorded",
+    "Ponmudi Dam":"DRIP safety audit recorded",
+    "Poringalkuthu Dam":"DRIP safety audit recorded",
+    "Sholayar Main Dam":"DRIP safety audit recorded",
+    "Sholayar Flanking Dam":"DRIP safety audit recorded",
+    "Sholayar Saddle Dam":"DRIP safety audit recorded",
+    "Kallada Dam (Parappar)":"DRIP safety audit recorded",
+    "Kanjirappuzha Dam":"DRIP safety audit recorded",
+    "Karapuzha Dam":"DRIP safety audit recorded",
+    "Malampuzha Dam":"DRIP safety audit recorded",
+    "Malankara Dam":"DRIP safety audit recorded",
+    "Mangalam Dam":"DRIP safety audit recorded",
+    "Neyyar Dam":"DRIP safety audit recorded",
+    "Maniyar Dam":"DRIP safety audit recorded",
+    "Periyar Valley Barrage":"DRIP safety audit recorded",
+    "Walayar Dam":"DRIP safety audit recorded",
 }
 
+MULLAPERIYAR_EVIDENCE={
+    "report_date":"22 Nov 2011",
+    "source":"Kerala Expert Group report",
+    "observations":[
+        "The report could not confirm whether new cracks on the dam were specifically caused by the 18 November earthquake.",
+        "Seepage data were not available to the expert group at the time of the visit, so an increase in total seepage could not be established.",
+        "Lime-leaching deposits/stalactite-like formations were observed in weeping holes, and deposits of leached surki mixture were observed in seepage channels.",
+        "The report noted concerns about piezometer instrumentation because gauges were present but measurements were not available from the standpipe piezometers reviewed."
+    ],
+}
 
-def structural_assessment(dam_name, dam):
-    """Transparent prototype structural-health screening.
+STRUCTURAL_REQUIRED_COLUMNS=[
+    "dam","date","seepage","uplift","pore_pressure","deformation",
+    "crack_width","material_strength","reservoir_level"
+]
+STRUCTURAL_NUMERIC_COLUMNS=[
+    "seepage","uplift","pore_pressure","deformation",
+    "crack_width","material_strength","reservoir_level"
+]
 
-    This is NOT a dam-break probability model. It combines prototype condition
-    indicators with current hydraulic loading to identify when an engineering
-    review should be considered. Replace every prototype input with verified
-    inspection/instrumentation data before operational use.
+
+def _structural_history_paths():
+    base=Path(__file__).resolve().parent / "data"
+    return [base / "structural_history.csv", base / "structural_history_data.csv"]
+
+@st.cache_data(ttl=900,show_spinner=False)
+def load_structural_history():
+    """Load an actual structural/instrumentation CSV if present in data/."""
+    for path in _structural_history_paths():
+        if not path.exists():
+            continue
+        try:
+            df=pd.read_csv(path)
+            cols={str(c).strip().lower():str(c) for c in df.columns}
+            rename={cols[c]:c for c in STRUCTURAL_REQUIRED_COLUMNS if c in cols}
+            df=df.rename(columns=rename)
+            if "dam" not in df.columns:
+                continue
+            df["dam"]=df["dam"].astype(str).str.strip()
+            if "date" in df.columns:
+                df["date"]=pd.to_datetime(df["date"],errors="coerce",dayfirst=True)
+            else:
+                df["date"]=pd.NaT
+            for c in STRUCTURAL_NUMERIC_COLUMNS:
+                if c not in df.columns:
+                    df[c]=np.nan
+                df[c]=pd.to_numeric(df[c],errors="coerce")
+            return df.sort_values(["dam","date"],na_position="last").reset_index(drop=True), str(path)
+        except Exception:
+            continue
+    return pd.DataFrame(columns=STRUCTURAL_REQUIRED_COLUMNS), ""
+
+
+def structural_history_for_dam(dam_name, uploaded_df=None):
+    if uploaded_df is not None and not uploaded_df.empty:
+        df=uploaded_df.copy()
+    else:
+        df,_=load_structural_history()
+    if df.empty or "dam" not in df.columns:
+        return pd.DataFrame(columns=STRUCTURAL_REQUIRED_COLUMNS)
+    names=df["dam"].astype(str)
+    mask=names.map(_norm_name)==_norm_name(dam_name)
+    return df.loc[mask].copy().sort_values("date",na_position="last").reset_index(drop=True)
+
+
+def structural_ml_anomaly(history):
+    """Unsupervised anomaly screening for actual structural measurements.
+
+    This model is intentionally not a failure-probability model. It identifies
+    unusual multivariate observations relative to the supplied historical record.
     """
-    s=STRUCTURAL_DATABASE.get(dam_name)
-    if not s:
-        return {"status":"DATA UNAVAILABLE"}
+    if history.empty:
+        return {"available":False,"reason":"No structural-history records loaded."}
+    available=[c for c in STRUCTURAL_NUMERIC_COLUMNS if c in history.columns and history[c].notna().sum()>=6]
+    if len(history)<12 or len(available)<2:
+        return {"available":False,"reason":f"Need at least 12 records and 2 measured structural variables; found {len(history)} records and {len(available)} usable variables."}
+    data=history[available].dropna()
+    if len(data)<12:
+        return {"available":False,"reason":f"Only {len(data)} complete multivariate records are available."}
+    pipe=Pipeline([
+        ("scale",StandardScaler()),
+        ("model",IsolationForest(n_estimators=200,contamination="auto",random_state=42))
+    ])
+    pipe.fit(data)
+    labels=pipe.predict(data)
+    latest=data.iloc[-1:]
+    latest_label=int(pipe.predict(latest)[0])
+    score=float(-pipe.decision_function(latest)[0])
+    return {
+        "available":True,
+        "features":available,
+        "records":len(data),
+        "latest_anomaly":latest_label==-1,
+        "anomaly_score":round(score,4),
+    }
+
+
+def structural_evidence(dam_name, dam, uploaded_df=None):
+    history=structural_history_for_dam(dam_name,uploaded_df)
+    audit=dam_name in STRUCTURAL_AUDIT_DAMS
+    has_mullaperiyar=(dam_name=="Mullaperiyar Dam")
+    ml=structural_ml_anomaly(history)
     current_year=pd.Timestamp.now().year
-    age=max(0,current_year-s["construction_year"])
-    age_factor=min(1.0,age/100)
-    loading=min(1.0,max(0.0,dam["water_level"]/100))
-    inflow_factor=min(1.0,max(0.0,dam["inflow"]/2000))
-    seepage=s["seepage_index"]
-    crack=s["crack_index"]
-    deformation=s["deformation_index"]
-    decay=s["material_decay"]
-    foundation=s["foundation_index"]
-    anomaly_components={
-        "Seepage":s["seepage_growth"],
-        "Crack growth":s["crack_growth"],
-        "Deformation":s["deformation_growth"],
+    age=max(0,current_year-KERALA_DAM_REGISTRY[dam_name]["year"])
+    return {
+        "age":age,
+        "audit":audit,
+        "audit_text":STRUCTURAL_AUDIT_DAMS.get(dam_name,"No linked DRIP safety-audit record in the connected public source"),
+        "history_rows":len(history),
+        "history":history,
+        "ml":ml,
+        "mullaperiyar":has_mullaperiyar,
+        "data_status":"STRUCTURAL RECORDS LOADED" if len(history)>0 else ("DOCUMENTARY SAFETY EVIDENCE" if audit or has_mullaperiyar else "NO STRUCTURED STRUCTURAL DATA"),
     }
-    trend_score=np.mean(list(anomaly_components.values()))
-    sci=100*(
-        0.12*age_factor+
-        0.18*crack+
-        0.18*seepage+
-        0.15*deformation+
-        0.17*decay+
-        0.12*foundation+
-        0.08*trend_score/0.05
-    )
-    loading_score=100*(0.65*loading+0.35*inflow_factor)
-    combined=min(100,0.65*sci+0.35*loading_score)
-    if combined>=70: status="CRITICAL"
-    elif combined>=50: status="ELEVATED"
-    elif combined>=30: status="WATCH"
-    else: status="NORMAL"
 
-    modes={
-        "Overtopping / hydraulic loading":min(100,round(100*(0.7*loading+0.3*inflow_factor))),
-        "Excessive seepage":min(100,round(100*(0.75*seepage+0.25*max(0,s["seepage_growth"])/0.05))),
-        "Cracking / material deterioration":min(100,round(100*(0.55*crack+0.30*decay+0.15*max(0,s["crack_growth"])/0.05))),
-        "Deformation / movement":min(100,round(100*(0.75*deformation+0.25*max(0,s["deformation_growth"])/0.05))),
-        "Foundation condition":min(100,round(100*foundation)),
-        "Seismic screening":min(100,round(100*s["seismic_index"])),
-    }
-    if max(modes.values())>=70: review="Engineering review recommended"
-    elif max(modes.values())>=50: review="Enhanced monitoring recommended"
-    else: review="Routine monitoring"
-    return {"status":status,"sci":sci,"combined":combined,"loading_score":loading_score,"age":age,"data":s,"modes":modes,"review":review,"trend_score":trend_score}
-
-
-def structural_history(dam_name):
-    """Generate a clearly labelled prototype trend series from the prototype baseline."""
-    s=STRUCTURAL_DATABASE[dam_name]
-    years=np.arange(2019,2027)
-    def series(base,growth,scale=1.0):
-        return np.clip(base + growth*np.arange(len(years))*scale,0,1)
-    return pd.DataFrame({
-        "Year":years,
-        "Seepage index":series(s["seepage_index"],s["seepage_growth"],1),
-        "Crack index":series(s["crack_index"],s["crack_growth"],1),
-        "Deformation index":series(s["deformation_index"],s["deformation_growth"],1),
-        "Material deterioration":series(max(0.01,s["material_decay"]-0.03),s["material_decay"]/8,1),
-    })
+# Keep the old function name for compatibility with any existing callers.
+def structural_assessment(dam_name, dam, uploaded_df=None):
+    e=structural_evidence(dam_name,dam,uploaded_df)
+    return {"status":e["data_status"],"evidence":e}
 
 # ============================================================
 # HELPERS
@@ -1685,81 +1815,135 @@ elif st.session_state.page=="Authority Console":
 elif st.session_state.page=="Structural Safety":
     if not st.session_state.authority:
         st.session_state.page="Authority Access"; st.rerun()
-    st.markdown('<div class="hs-section">Structural Safety Assessment</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    st.markdown('<div class="hs-note"><b>Authority-only engineering screening.</b> This module combines structural-condition indicators, historical trends and current hydraulic loading. The current structural dataset is explicitly marked PROTOTYPE because HYDROSCOPE is not yet connected to authorised inspection/instrumentation feeds. It must not be interpreted as a certified dam-safety assessment or a prediction that a dam will fail.</div>',unsafe_allow_html=True)
-    name=st.selectbox("Select Dam",list(KERALA_DAM_REGISTRY),key="struct_dam")
-    meta=KERALA_DAM_REGISTRY[name]
+
+    st.markdown('<div class="hs-section">Authority Structural Safety</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    st.markdown(
+        '<div class="hs-note"><b>Evidence-based screening.</b> This page does not invent crack, seepage, deformation or material values. It combines documented public safety-audit evidence with any actual structural/instrumentation CSV supplied to HYDROSCOPE and current reservoir loading from the KSEB/KSDMA data layer. It is not a certified dam-safety assessment or a dam-failure probability.</div>',
+        unsafe_allow_html=True
+    )
+
+    name=st.selectbox("Select Dam",AUTHORITY_DAM_OPTIONS,key="struct_dam")
     dam=authority_dam_record(name)
-    result=structural_assessment(name,dam)
-    if result.get("status")=="DATA UNAVAILABLE":
-        st.info("This dam is included in the Kerala authority registry, but verified structural-health/instrumentation data are not connected to the prototype yet. Registry and downstream-impact information are still available.")
-        render_dam_profile(name,dam)
-        st.markdown('<div class="hs-section">Structural Data Availability</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        availability=pd.DataFrame({
-            "Parameter":["Inspection records","Crack measurements","Seepage / leakage","Deformation / movement","Material condition","Foundation instrumentation","Historical trend series"],
-            "Status":["Not connected","Not connected","Not connected","Not connected","Not connected","Not connected","Not connected"]
-        })
-        st.dataframe(availability,use_container_width=True,hide_index=True)
-        st.markdown('<div class="hs-section">Potential Downstream Impact if Dam Breaks</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        zones=DOWNSTREAM_ZONES.get(name,["Downstream river corridor","Nearby low-lying areas"])
-        zone_cols=st.columns(2)
-        for i,zone in enumerate(zones):
-            with zone_cols[i%2]:
-                st.markdown(f'<div class="hs-card" style="min-height:110px;margin-bottom:14px"><div class="hs-card-label">Potential impact area {i+1}</div><div class="hs-card-title">{zone}</div><p class="hs-card-copy">Review with the dam-specific hydraulic model and approved Emergency Action Plan.</p></div>',unsafe_allow_html=True)
-        st.markdown('<div class="hs-note">Exact inundation boundaries, affected villages, roads, bridges and evacuation zones require verified EAP/GIS and calibrated hydraulic data. They are not inferred from registry metadata alone.</div>',unsafe_allow_html=True)
+    render_dam_profile(name,dam)
+    evidence=structural_evidence(name,dam)
+
+    st.markdown('<div class="hs-section">Structural Evidence Status</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    a,b,c,d=st.columns(4)
+    a.metric("Dam age",f"{evidence['age']} years")
+    b.metric("Safety-audit record","Documented" if evidence["audit"] else "Not linked")
+    c.metric("Structural time-series",f"{evidence['history_rows']} records")
+    d.metric("Analysis state",evidence["data_status"])
+
+    availability_rows=[
+        ("Inspection / safety-audit record", "Documented" if evidence["audit"] else "No linked structured record"),
+        ("Crack measurements", "Loaded from structural CSV" if "crack_width" in evidence["history"].columns and evidence["history"]["crack_width"].notna().any() else "No measurement series loaded"),
+        ("Seepage / leakage", "Loaded from structural CSV" if "seepage" in evidence["history"].columns and evidence["history"]["seepage"].notna().any() else "No measurement series loaded"),
+        ("Deformation / movement", "Loaded from structural CSV" if "deformation" in evidence["history"].columns and evidence["history"]["deformation"].notna().any() else "No measurement series loaded"),
+        ("Uplift / pore pressure", "Loaded from structural CSV" if (("uplift" in evidence["history"].columns and evidence["history"]["uplift"].notna().any()) or ("pore_pressure" in evidence["history"].columns and evidence["history"]["pore_pressure"].notna().any())) else "No measurement series loaded"),
+        ("Material strength / condition", "Loaded from structural CSV" if "material_strength" in evidence["history"].columns and evidence["history"]["material_strength"].notna().any() else "No measurement series loaded"),
+        ("Historical trend series", "Available" if evidence["history_rows"] else ("Documentary only" if evidence["audit"] or evidence["mullaperiyar"] else "Not available")),
+    ]
+    st.dataframe(pd.DataFrame(availability_rows,columns=["Parameter","Status"]),use_container_width=True,hide_index=True)
+
+    st.markdown('<div class="hs-section">Documented Inspection / Safety Evidence</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    if evidence["audit"]:
+        st.success("Government of India / DRIP record: this dam appears in the safety-audit list covering preparatory activities from November 2018 to November 2021.")
+        st.markdown(f'<div class="hs-note">Record type: <b>Safety audit / inspection activity documented</b><br>Scope: Government of India DRIP-II / DRIP-III preparatory safety audits<br>Source: <a href="{STRUCTURAL_AUDIT_SOURCE_URL}" target="_blank">official Rajya Sabha annexure</a></div>',unsafe_allow_html=True)
     else:
-        s=result["data"]
-        a,b,c,d4=st.columns(4)
-        a.metric("Dam age",f"{result['age']} years")
-        b.metric("Structural Condition Index",f"{result['sci']:.1f}/100")
-        c.metric("Current Loading Index",f"{result['loading_score']:.1f}/100")
-        d4.metric("Safety Screening",result["status"])
+        st.info("No linked DRIP safety-audit entry is currently mapped to this registry record in the connected public source. This does not mean the dam has never been inspected; it means the record is not mapped in this prototype.")
+    if evidence["mullaperiyar"]:
+        st.markdown(f'<div class="hs-note" style="margin-top:10px">Mullaperiyar also has a public Kerala Expert Group report dated 22 Nov 2011 with historical observations on seepage information, leaching deposits and piezometer instrumentation. <a href="{MULLAPERIYAR_REPORT_URL}" target="_blank">Open report</a></div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="hs-section">Current Structural Condition</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        cols=st.columns(4)
-        cols[0].metric("Crack indicator",f"{s['crack_index']*100:.0f}%")
-        cols[1].metric("Seepage indicator",f"{s['seepage_index']*100:.0f}%")
-        cols[2].metric("Deformation indicator",f"{s['deformation_index']*100:.0f}%")
-        cols[3].metric("Material deterioration",f"{s['material_decay']*100:.0f}%")
-        st.caption(f"Construction year: {s['construction_year']}  ·  Material: {s['material']}  ·  Last prototype rehabilitation marker: {s['rehab_year']}  ·  Data status: {s['data_status']}")
+    st.markdown('<div class="hs-section">Current Reservoir Loading</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    loading_cols=st.columns(5)
+    def _fmt(v,suffix=""):
+        try:
+            v=float(v)
+            return f"{v:.2f}{suffix}" if np.isfinite(v) else "—"
+        except Exception:
+            return "—"
+    loading_cols[0].metric("Water level",_fmt(dam.get("water_level")," m"))
+    loading_cols[1].metric("Storage",_fmt(dam.get("storage_pct")," %"))
+    loading_cols[2].metric("Inflow",_fmt(dam.get("inflow")," m³/s"))
+    loading_cols[3].metric("Outflow",_fmt(dam.get("outflow")," m³/s"))
+    loading_cols[4].metric("Rainfall",_fmt(dam.get("rainfall")," mm"))
+    if dam.get("data_available"):
+        st.caption(f"Reservoir observation: {dam.get('observed_at','')} · Source: KSEB/KSDMA published data")
+    else:
+        st.caption("No connected operational reservoir observation for this dam; registry information is still shown.")
 
-        st.markdown('<div class="hs-section">Historical Behaviour</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        hist=structural_history(name)
-        fig=go.Figure()
-        for col in ["Seepage index","Crack index","Deformation index","Material deterioration"]:
-            fig.add_trace(go.Scatter(x=hist["Year"],y=hist[col]*100,mode="lines+markers",name=col))
-        fig.update_layout(template="plotly_dark",height=390,yaxis_title="Prototype condition index (%)",xaxis_title="Year",legend_title="Indicator")
-        st.plotly_chart(fig,use_container_width=True)
-        st.caption("Prototype trend only. Replace these generated trend values with dated inspection and instrumentation records before using this module operationally.")
+    st.markdown('<div class="hs-section">Structural History & ML Anomaly Screening</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    uploaded=st.file_uploader(
+        "Upload an authorised structural/instrumentation history CSV",
+        type=["csv"],
+        key="structural_csv_upload",
+        help="Expected columns: dam, date, seepage, uplift, pore_pressure, deformation, crack_width, material_strength, reservoir_level"
+    )
+    uploaded_df=None
+    if uploaded is not None:
+        try:
+            uploaded_df=pd.read_csv(uploaded)
+            cols={str(c).strip().lower():str(c) for c in uploaded_df.columns}
+            uploaded_df=uploaded_df.rename(columns={v:k for k,v in cols.items()})
+            if "dam" not in uploaded_df.columns:
+                st.error("The uploaded CSV must contain a 'dam' column.")
+                uploaded_df=None
+            else:
+                uploaded_df["dam"]=uploaded_df["dam"].astype(str).str.strip()
+                uploaded_df["date"]=pd.to_datetime(uploaded_df.get("date",pd.Series(dtype=str)),errors="coerce",dayfirst=True)
+                for col in STRUCTURAL_NUMERIC_COLUMNS:
+                    if col not in uploaded_df.columns:
+                        uploaded_df[col]=np.nan
+                    uploaded_df[col]=pd.to_numeric(uploaded_df[col],errors="coerce")
+        except Exception as ex:
+            st.error(f"Unable to read the uploaded structural dataset: {ex}")
+            uploaded_df=None
 
-        st.markdown('<div class="hs-section">Historical Anomaly Indicators</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        anomaly=pd.DataFrame({
-            "Indicator":["Seepage","Crack growth","Deformation"],
-            "Current trend increase (%)":[round(s["seepage_growth"]*100,1),round(s["crack_growth"]*100,1),round(s["deformation_growth"]*100,1)],
-            "Screening status":["Increasing" if s["seepage_growth"]>0.025 else "Stable","Increasing" if s["crack_growth"]>0.025 else "Stable","Increasing" if s["deformation_growth"]>0.025 else "Stable"]
-        })
-        st.dataframe(anomaly,use_container_width=True,hide_index=True)
+    selected_history=structural_history_for_dam(name,uploaded_df)
+    if not selected_history.empty:
+        st.success(f"{len(selected_history)} structural/instrumentation records loaded for {name}.")
+        show_cols=[c for c in ["date"]+STRUCTURAL_NUMERIC_COLUMNS if c in selected_history.columns and selected_history[c].notna().any()]
+        if show_cols:
+            st.dataframe(selected_history[show_cols].tail(15),use_container_width=True,hide_index=True)
+        ml=structural_ml_anomaly(selected_history)
+        if ml["available"]:
+            s1,s2,s3=st.columns(3)
+            s1.metric("ML method","Isolation Forest")
+            s2.metric("Features used",str(len(ml["features"])))
+            s3.metric("Latest record", "Anomaly flag" if ml["latest_anomaly"] else "Within learned pattern")
+            if ml["latest_anomaly"]:
+                st.warning("The latest multivariate structural observation is anomalous relative to the supplied historical record. This is an anomaly flag, not a prediction of dam failure.")
+            else:
+                st.info("The latest multivariate structural observation is within the learned historical pattern. Continue engineering monitoring and review.")
+        else:
+            st.info(ml["reason"])
+    else:
+        st.info("No structured structural/instrumentation time-series is loaded for this dam. The module will analyze actual measurements once an authorised history file is supplied.")
 
-        st.markdown('<div class="hs-section">Failure-Mode Screening</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        mode_df=pd.DataFrame({"Potential failure mode":list(result["modes"].keys()),"Screening index":list(result["modes"].values())})
-        mode_df["Screening level"]=mode_df["Screening index"].apply(lambda x:"Critical" if x>=70 else "Elevated" if x>=50 else "Watch" if x>=30 else "Normal")
-        st.dataframe(mode_df,use_container_width=True,hide_index=True)
-        st.markdown(f'<div class="hs-card"><div class="hs-card-label">Engineering review status</div><div class="hs-card-title">{result["review"]}</div><p class="hs-card-copy">The screening combines prototype structural indicators with current reservoir loading. It is not a failure probability and does not determine whether a dam will break.</p></div>',unsafe_allow_html=True)
+    if evidence["mullaperiyar"]:
+        st.markdown('<div class="hs-section">Mullaperiyar Historical Structural Evidence</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        st.caption(f"Source: Kerala Expert Group report · {MULLAPERIYAR_EVIDENCE['report_date']}")
+        for item in MULLAPERIYAR_EVIDENCE["observations"]:
+            st.markdown(f'<div class="hs-note" style="margin-bottom:8px">{item}</div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="hs-section">Potential Downstream Impact if Dam Breaks</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        zones=DOWNSTREAM_ZONES.get(name,["Downstream river corridor","Nearby low-lying areas"])
-        st.markdown('<div class="hs-note"><b>Scenario view:</b> These are the downstream areas currently configured for this prototype. They indicate locations that should be examined for potential impact in a hypothetical dam-break scenario. They are not an official inundation boundary or evacuation list.</div>',unsafe_allow_html=True)
-        zone_cols=st.columns(2)
-        for i,zone in enumerate(zones):
-            with zone_cols[i%2]:
-                st.markdown(f'<div class="hs-card" style="min-height:110px;margin-bottom:14px"><div class="hs-card-label">Potential impact area {i+1}</div><div class="hs-card-title">{zone}</div><p class="hs-card-copy">Review for possible flood exposure in the hydraulic scenario and approved Emergency Action Plan.</p></div>',unsafe_allow_html=True)
-        st.markdown('<div class="hs-section">Impact Assessment</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        impact=pd.DataFrame({
-            "Assessment item":["Downstream settlements / corridors","Low-lying river-side areas","Roads and bridges","Critical infrastructure","Evacuation / warning zones"],
-            "Current prototype status":["Configured monitoring zones", "Configured monitoring zones", "Requires verified GIS / EAP layer", "Requires verified GIS / EAP layer", "Requires official authority-defined EAP data"]
-        })
-        st.dataframe(impact,use_container_width=True,hide_index=True)
-        st.markdown('<div class="hs-note">For operational use, the affected-area layer must come from a calibrated dam-break / inundation model linked to verified terrain, river networks, settlements, roads, bridges, critical infrastructure and the dam\'s approved Emergency Action Plan. The current prototype does not claim to know the exact villages or structures that would be inundated.</div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-section">Documented Safety-Evidence Sources</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    sources=pd.DataFrame({
+        "Source":["Government of India / DRIP safety-audit list","CWC Safety Inspection Guidelines","CWC Manual for Assessing Structural Safety","KSDMA Dam Management / EAP framework"],
+        "Use in HYDROSCOPE":["Identifies dams with documented DRIP safety-audit activity","Defines inspection observations and monitoring needs","Defines structural assessment and instrumentation context","Provides dam-specific rule-curve and EAP framework"],
+    })
+    if evidence["mullaperiyar"]:
+        sources.loc[len(sources)]=["Kerala Expert Group — Mullaperiyar report (2011)","Historical structural observations for Mullaperiyar"]
+    st.dataframe(sources,use_container_width=True,hide_index=True)
+
+    st.markdown('<div class="hs-section">Potential Downstream Impact if Dam Breaks</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    zones=DOWNSTREAM_ZONES.get(name,["Downstream river corridor","Nearby low-lying areas"])
+    st.markdown('<div class="hs-note"><b>Hypothetical impact view:</b> the listed corridors are screening locations only. Exact inundation boundaries require the dam-specific hydraulic model, verified terrain/GIS and the approved Emergency Action Plan.</div>',unsafe_allow_html=True)
+    zone_cols=st.columns(2)
+    for i,zone in enumerate(zones):
+        with zone_cols[i%2]:
+            st.markdown(f'<div class="hs-card" style="min-height:110px;margin-bottom:14px"><div class="hs-card-label">Potential impact area {i+1}</div><div class="hs-card-title">{zone}</div><p class="hs-card-copy">Review against the dam-specific hydraulic scenario and approved EAP.</p></div>',unsafe_allow_html=True)
+
+    st.caption(f"Official safety-audit source: {STRUCTURAL_AUDIT_SOURCE_URL}")
 
 # ============================================================
 # AUTHORITY HYDRAULIC SIMULATION

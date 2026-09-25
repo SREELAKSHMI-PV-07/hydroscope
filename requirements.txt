@@ -4,6 +4,5 @@ numpy
 plotly
 folium
 streamlit-folium
-scikit-learn
-geopandas
 requests
+scikit-learn

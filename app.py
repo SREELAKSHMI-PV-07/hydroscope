@@ -513,6 +513,18 @@ elif st.session_state.page=="Public Dashboard":
     st.markdown(f'<div class="hs-section">Nearby Dams <span class="hs-pill">{len(dams)} within {radius} km</span></div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     if dams:
         dam_names=[d["name"] for d in dams]
+
+        # Apply an Inspect-button selection before creating the selectbox widget.
+        # Streamlit does not allow changing a widget's keyed session-state value
+        # after that widget has already been instantiated in the same run.
+        if "public_dam_focus_pending" in st.session_state:
+            pending=st.session_state.pop("public_dam_focus_pending")
+            if pending in dam_names:
+                st.session_state["public_dam_focus"] = pending
+
+        if st.session_state.get("public_dam_focus") not in dam_names:
+            st.session_state["public_dam_focus"] = dam_names[0]
+
         selected_name=st.selectbox("Select a dam to inspect",dam_names,key="public_dam_focus")
         focus=next(d for d in dams if d["name"]==selected_name)
         a,b=st.columns([1.35,.9])
@@ -540,7 +552,8 @@ elif st.session_state.page=="Public Dashboard":
             with cards[i%3]:
                 st.markdown(f'<div class="hs-card"><span class="hs-pill">{d["risk"]}  /  {d["distance"]:.1f} km</span><div class="hs-card-title" style="margin-top:12px">{d["name"]}</div><div class="hs-card-copy">Level <b>{d["water_level"]:.1f}</b>  |  Inflow <b>{d["inflow"]:.0f}</b> m3/s</div></div>',unsafe_allow_html=True)
                 if st.button("Inspect",key=f"inspect_{d['name']}",use_container_width=True):
-                    st.session_state.public_dam_focus=d["name"]; st.rerun()
+                    st.session_state.public_dam_focus_pending=d["name"]
+                    st.rerun()
     else:
         st.info("No demo dams are currently within this radius. The public interface is ready for additional verified reservoir feeds.")
 

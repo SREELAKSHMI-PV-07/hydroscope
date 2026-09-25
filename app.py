@@ -204,6 +204,16 @@ div[data-baseweb="input"]>div{
 @keyframes riverFlow{from{transform:translateX(-70px)}to{transform:translateX(70px)}}
 .hs-scene-label{position:absolute;z-index:5;left:24px;top:22px}.hs-scene-label .big{font-size:28px;font-weight:900}.hs-scene-label .small{font-size:10px;letter-spacing:1.5px;color:#8cc6d8;text-transform:uppercase;font-weight:800;margin-bottom:4px}
 .hs-scene-level{position:absolute;right:24px;top:22px;z-index:5;text-align:right}.hs-scene-level strong{font-size:30px;font-weight:900}.hs-scene-level span{display:block;color:#9acbd9;font-size:11px}
+.hg-world{position:relative;height:390px;border-radius:28px;overflow:hidden;border:1px solid rgba(110,225,255,.25);background:linear-gradient(180deg,#061c2a 0%,#0a4860 58%,#06354a 100%);box-shadow:inset 0 1px rgba(255,255,255,.06),0 24px 60px rgba(0,0,0,.28);}
+.hg-cloud{position:absolute;width:150px;height:42px;border-radius:50px;background:rgba(185,229,239,.10);filter:blur(2px);z-index:2}.hg-c1{left:10%;top:13%}.hg-c2{right:12%;top:21%;transform:scale(.72)}
+.hg-rain{position:absolute;inset:0;z-index:3;background:repeating-linear-gradient(105deg,transparent 0 18px,rgba(126,225,255,.55) 19px 21px,transparent 22px 42px);animation:hgRain .65s linear infinite;pointer-events:none}
+@keyframes hgRain{from{transform:translateY(-30px)}to{transform:translateY(30px)}}
+.hg-mountain{position:absolute;bottom:31%;width:0;height:0;border-left:190px solid transparent;border-right:190px solid transparent;border-bottom:175px solid rgba(9,66,82,.92);z-index:1}.hg-m1{left:-45px}.hg-m2{right:-85px;transform:scale(.8);border-bottom-color:rgba(7,57,75,.95)}
+.hg-reservoir{position:absolute;left:0;right:0;bottom:29%;height:44%;overflow:hidden;background:rgba(7,119,160,.55);border-top:2px solid rgba(131,239,255,.38);z-index:4}.hg-water{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(93,229,255,.88),rgba(3,92,139,.94));transition:height .8s ease}.hg-wave{position:absolute;inset:0;background:repeating-linear-gradient(-5deg,rgba(202,250,255,.16) 0 2px,transparent 2px 18px);animation:hgWave 4s linear infinite}@keyframes hgWave{from{transform:translateX(-50px)}to{transform:translateX(50px)}}
+.hg-dam{position:absolute;left:50%;bottom:29%;transform:translateX(-50%);width:250px;height:145px;background:linear-gradient(90deg,#526a77,#9fb2ba 45%,#526a77);clip-path:polygon(9% 0,91% 0,100% 100%,0 100%);z-index:6;box-shadow:0 16px 30px rgba(0,0,0,.3)}.hg-dam-top{position:absolute;left:7%;right:7%;top:10px;height:8px;border-radius:8px;background:rgba(231,252,255,.28)}
+.hg-gates{position:absolute;left:18%;right:18%;bottom:0;height:105px;display:flex;gap:7px;align-items:flex-end}.hg-gate{flex:1;height:84px;border-radius:3px 3px 0 0;border:1px solid rgba(236,253,255,.25);background:linear-gradient(90deg,#203b47,#a1b4bc,#203b47);position:relative;overflow:hidden}.hg-open{background:linear-gradient(90deg,#284651,#b5c6cc,#284651)}.hg-open:after{content:"";position:absolute;left:30%;right:30%;bottom:-46px;height:100px;border-radius:50%;background:linear-gradient(180deg,rgba(144,242,255,.9),rgba(28,163,215,.05));animation:hgFlow 1.3s ease-in-out infinite}@keyframes hgFlow{50%{transform:scaleX(1.35);opacity:.7}}
+.hg-river{position:absolute;left:0;right:0;bottom:0;height:30%;z-index:5;background:linear-gradient(180deg,#087fa8,#032d48);clip-path:polygon(0 25%,18% 14%,36% 36%,52% 16%,70% 32%,100% 10%,100% 100%,0 100%)}.hg-river-flow{position:absolute;inset:0;background:repeating-linear-gradient(-8deg,rgba(168,246,255,.18) 0 2px,transparent 2px 22px);animation:hgRiver 2.8s linear infinite}@keyframes hgRiver{from{transform:translateX(-80px)}to{transform:translateX(80px)}}
+.hg-valley{position:absolute;right:6%;bottom:13%;display:flex;gap:10px;z-index:8;align-items:flex-end}.hg-house{width:22px;height:18px;background:#d8c59c;position:relative;box-shadow:0 4px 9px rgba(0,0,0,.25)}.hg-house:before{content:"";position:absolute;left:-4px;top:-11px;border-left:15px solid transparent;border-right:15px solid transparent;border-bottom:14px solid #8a5660}.hg-overlay{position:absolute;left:18px;right:18px;top:17px;display:flex;gap:8px;z-index:12}.hg-overlay>div{padding:8px 11px;border-radius:13px;background:rgba(3,25,39,.68);border:1px solid rgba(131,231,255,.18);backdrop-filter:blur(8px)}.hg-overlay span{display:block;font-size:8px;letter-spacing:1.2px;color:#83b9c8;font-weight:800}.hg-overlay strong{display:block;font-size:17px;margin-top:2px;color:#effcff}
 .hs-game{position:relative;padding:28px;border-radius:28px;border:1px solid rgba(102,221,255,.25);background:linear-gradient(145deg,rgba(7,52,72,.94),rgba(3,25,39,.96));box-shadow:20px 25px 55px rgba(0,0,0,.28);overflow:hidden;}
 .hs-game:before{content:"";position:absolute;left:-10%;right:-10%;bottom:-30%;height:55%;background:radial-gradient(ellipse,rgba(40,208,255,.17),transparent 65%);animation:gameGlow 6s ease-in-out infinite alternate;}
 @keyframes gameGlow{from{transform:translateX(-3%)}to{transform:translateX(3%)}}
@@ -523,18 +533,47 @@ def public_release_assessment(d, scenario_shutters):
     }
 
 def interactive_dam_visual(dam):
-    pct=max(8,min(94,dam["water_level"]))
+    pct=max(8,min(94,float(dam["water_level"])))
     gates=[]
-    for i in range(dam["total_shutters"]):
-        gates.append('<span class="hs-gate open"></span>' if i < dam["open_shutters"] else '<span class="hs-gate"></span>')
+    total=int(dam.get("total_shutters",4))
+    opened=int(dam.get("open_shutters",0))
+    for i in range(total):
+        gates.append('<span class="hs-gate open"></span>' if i < opened else '<span class="hs-gate"></span>')
+    name=dam.get("name","Idukki Dam")
     return f'''<div class="hs-dam-scene">
       <div class="hs-dam-sky"></div><div class="hs-moon"></div>
       <div class="hs-mountain m1"></div><div class="hs-mountain m2"></div>
-      <div class="hs-scene-label"><div class="small">Interactive reservoir view</div><div class="big">{dam["name"]}</div></div>
-      <div class="hs-scene-level"><strong>{dam["water_level"]:.1f} m</strong><span>current prototype level</span></div>
+      <div class="hs-scene-label"><div class="small">Interactive reservoir view</div><div class="big">{name}</div></div>
+      <div class="hs-scene-level"><strong>{float(dam["water_level"]):.1f} m</strong><span>current prototype level</span></div>
       <div class="hs-reservoir"><div class="hs-waterline"></div><div class="hs-reservoir-fill" style="height:{pct}%"></div></div>
       <div class="hs-dam-wall"></div><div class="hs-gates">{''.join(gates)}</div>
       <div class="hs-river"></div>
+    </div>'''
+
+
+def hydro_game_scene(step, water, rainfall, safety):
+    water_pct=max(10,min(92,int(water)))
+    rain_pct=max(12,min(96,int(rainfall/1.7)))
+    safety_pct=max(8,min(96,int(safety)))
+    gates_open=1 if step>=1 else 0
+    if step>=2: gates_open=2
+    gates=[]
+    for i in range(4):
+        gates.append('<span class="hg-gate hg-open"></span>' if i < gates_open else '<span class="hg-gate"></span>')
+    houses=''.join('<span class="hg-house"></span>' for _ in range(5))
+    return f'''<div class="hg-world">
+      <div class="hg-cloud hg-c1"></div><div class="hg-cloud hg-c2"></div><div class="hg-rain" style="opacity:{0.25+rain_pct/140:.2f}"></div>
+      <div class="hg-mountain hg-m1"></div><div class="hg-mountain hg-m2"></div>
+      <div class="hg-reservoir"><div class="hg-water" style="height:{water_pct}%"></div><div class="hg-wave"></div></div>
+      <div class="hg-dam"><div class="hg-dam-top"></div><div class="hg-gates">{''.join(gates)}</div></div>
+      <div class="hg-river"><div class="hg-river-flow"></div></div>
+      <div class="hg-valley">{houses}</div>
+      <div class="hg-overlay">
+        <div><span>EVENT</span><strong>{step+1}/3</strong></div>
+        <div><span>RAINFALL</span><strong>{rainfall} mm</strong></div>
+        <div><span>RESERVOIR</span><strong>{water}%</strong></div>
+        <div><span>SAFETY</span><strong>{safety}%</strong></div>
+      </div>
     </div>'''
 
 
@@ -569,9 +608,10 @@ def hydro_game_page():
     st.markdown('<div class="hs-game"><div class="hs-game-title">PROTECT THE VALLEY</div><div class="hs-game-sub">A short educational mini-game inside HYDROSCOPE. Manage information and preparedness as rainfall increases. This fictional simulation does not control or predict any real dam.</div></div>',unsafe_allow_html=True)
     if "game_started" not in st.session_state: st.session_state.game_started=False
     if not st.session_state.game_started:
+        st.markdown(hydro_game_scene(0,58,82,55),unsafe_allow_html=True)
         st.write("")
-        st.markdown('<div class="hs-note">Three events. One fictional valley. Choose how you respond as rainfall and reservoir level rise.</div>',unsafe_allow_html=True)
-        if st.button("Start Hydro Guardian",type="primary",key="start_game"): hydro_guardian_reset(); st.rerun()
+        st.markdown('<div class="hs-note">Three events. One fictional valley. Rainfall intensifies, the reservoir rises and downstream conditions change. Choose the safest public-response action at each stage.</div>',unsafe_allow_html=True)
+        if st.button("Start Hydro Guardian",type="primary",key="start_game",use_container_width=True): hydro_guardian_reset(); st.rerun()
         return
     if st.session_state.get("game_over"):
         a,b,c=st.columns(3)
@@ -585,6 +625,8 @@ def hydro_game_page():
     step=st.session_state.game_step
     rainfall=[82,118,151][min(step,2)]
     level=st.session_state.game_water
+    st.markdown(hydro_game_scene(step,level,rainfall,st.session_state.game_safety),unsafe_allow_html=True)
+    st.write("")
     a,b,c=st.columns(3)
     a.markdown(f'<div class="hs-game-stat">Rainfall<strong>{rainfall} mm</strong><div class="hs-game-bar"><span style="width:{min(100,rainfall/1.6)}%"></span></div></div>',unsafe_allow_html=True)
     b.markdown(f'<div class="hs-game-stat">Reservoir<strong>{level}%</strong><div class="hs-game-bar"><span style="width:{level}%"></span></div></div>',unsafe_allow_html=True)

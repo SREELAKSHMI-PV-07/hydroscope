@@ -219,6 +219,53 @@ div[data-baseweb="input"]>div{
 @keyframes gameGlow{from{transform:translateX(-3%)}to{transform:translateX(3%)}}
 .hs-game-title{font-size:38px;font-weight:950;letter-spacing:2px}.hs-game-sub{color:#91c6d6;font-size:13px;line-height:1.6}.hs-game-stat{padding:16px;border-radius:18px;border:1px solid rgba(100,215,255,.17);background:rgba(4,31,46,.72);text-align:center}.hs-game-stat strong{display:block;font-size:25px;margin-top:5px}.hs-game-bar{height:14px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;border:1px solid rgba(100,215,255,.15);margin-top:9px}.hs-game-bar>span{display:block;height:100%;background:linear-gradient(90deg,#1daedb,#79e7ff);transition:width .4s ease}.hs-game-over{padding:22px;border-radius:22px;border:1px solid rgba(100,220,255,.3);background:rgba(8,58,77,.72);text-align:center}.hs-score{font-size:54px;font-weight:950;color:#7de9ff}
 
+
+
+/* ------------------------------------------------------------
+   HYDROSCOPE UI POLISH LAYER
+   ------------------------------------------------------------ */
+.hs-brand{min-height:112px;padding:22px 30px;border-radius:26px;background:linear-gradient(120deg,rgba(7,44,61,.96),rgba(3,22,36,.88) 55%,rgba(4,48,65,.90));}
+.hs-brand-title{font-size:42px;letter-spacing:7px}
+.hs-brand-sub{font-size:10px;letter-spacing:1.8px;margin-top:9px}
+.hs-status{right:28px;bottom:24px}
+.hs-topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:18px 0 4px;padding:12px 16px;border:1px solid rgba(107,220,255,.13);border-radius:18px;background:rgba(3,25,39,.55);backdrop-filter:blur(14px);}
+.hs-topbar-copy{font-size:10px;color:#709daf;text-transform:uppercase;letter-spacing:1.6px;font-weight:800}
+.hs-topbar-live{display:flex;align-items:center;gap:8px;font-size:10px;color:#9beaff;text-transform:uppercase;letter-spacing:1.2px;font-weight:900}
+.hs-live-line{width:6px;height:6px;border-radius:50%;background:#59e4ff;box-shadow:0 0 15px #59e4ff;animation:livePulse 1.7s ease-in-out infinite}
+@keyframes livePulse{0%,100%{opacity:.45;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+div.stButton>button[kind="primary"]{background:linear-gradient(135deg,#0d779a,#19b8df)!important;border-color:rgba(143,241,255,.7)!important;color:#021c28!important;box-shadow:0 10px 30px rgba(30,196,238,.25),inset 0 1px rgba(255,255,255,.28)!important;}
+div.stButton>button[kind="primary"]:hover{box-shadow:0 15px 35px rgba(30,196,238,.35)!important;}
+.hs-hero{position:relative;min-height:310px;padding:34px 38px;margin-top:18px;border-radius:30px;border:1px solid rgba(101,220,255,.22);overflow:hidden;background:radial-gradient(circle at 82% 35%,rgba(41,211,255,.14),transparent 26%),linear-gradient(120deg,rgba(7,45,61,.97),rgba(3,25,40,.93) 58%,rgba(5,42,57,.88));box-shadow:0 28px 70px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.05);}
+.hs-hero:before{content:"";position:absolute;left:-10%;right:-10%;bottom:-64px;height:145px;background:repeating-linear-gradient(-5deg,rgba(75,220,255,.10) 0 2px,transparent 2px 24px);transform:skewY(-2deg);animation:heroWater 7s linear infinite;}
+@keyframes heroWater{from{background-position:0 0}to{background-position:180px 0}}
+.hs-hero-copywrap{position:relative;z-index:3;max-width:600px}
+.hs-kicker{display:inline-flex;align-items:center;gap:8px;color:#76dfff;font-size:10px;text-transform:uppercase;letter-spacing:2px;font-weight:900;padding:7px 11px;border:1px solid rgba(95,221,255,.22);border-radius:999px;background:rgba(20,157,199,.08)}
+.hs-kicker:before{content:"";width:6px;height:6px;border-radius:50%;background:#64e5ff;box-shadow:0 0 12px #64e5ff}
+.hs-hero-title{font-size:clamp(32px,4.2vw,57px);line-height:1.02;font-weight:950;letter-spacing:-1.8px;margin-top:20px;max-width:650px}
+.hs-hero-title span{color:#62ddff}
+.hs-hero-copy{color:#9ac7d6;font-size:14px;line-height:1.7;max-width:590px;margin-top:16px}
+.hs-hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:23px}
+.hs-action{display:inline-block;padding:10px 15px;border-radius:13px;border:1px solid rgba(104,220,255,.20);background:rgba(6,48,65,.72);color:#dff9ff;font-size:11px;font-weight:850;letter-spacing:.6px}
+.hs-hero-orbit{position:absolute;right:-70px;top:-80px;width:430px;height:430px;border-radius:50%;border:1px solid rgba(88,222,255,.13);box-shadow:0 0 0 28px rgba(88,222,255,.025),0 0 0 58px rgba(88,222,255,.018)}
+.hs-hero-orbit:after{content:"";position:absolute;left:50%;top:50%;width:115px;height:115px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(87,226,255,.23),rgba(6,62,82,.03) 68%,transparent 70%);box-shadow:0 0 50px rgba(52,213,255,.16)}
+.hs-command{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-top:18px}
+.hs-command-panel{padding:21px 23px;border-radius:22px;border:1px solid rgba(102,220,255,.16);background:linear-gradient(145deg,rgba(8,50,67,.84),rgba(3,25,39,.88));box-shadow:10px 18px 35px rgba(0,0,0,.18)}
+.hs-command-label{font-size:9px;text-transform:uppercase;letter-spacing:1.8px;color:#6faabd;font-weight:900}
+.hs-command-value{font-size:23px;font-weight:950;margin-top:6px}
+.hs-command-copy{font-size:12px;color:#8fbaca;line-height:1.55;margin-top:5px}
+.hs-signal{height:7px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:13px}
+.hs-signal span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#168bb2,#67e4ff);box-shadow:0 0 16px rgba(70,220,255,.35)}
+.hs-section{margin-top:36px}
+.hs-section-line{margin-bottom:17px}
+.hs-note{background:linear-gradient(120deg,rgba(7,48,64,.72),rgba(3,29,43,.62));backdrop-filter:blur(12px)}
+.hs-card{min-height:165px}
+.hs-dashboard-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:10px}
+.hs-dashboard-title{font-size:34px;font-weight:950;letter-spacing:-.7px}
+.hs-dashboard-sub{color:#83b4c5;font-size:13px;margin-top:5px}
+.hs-location-badge{padding:9px 13px;border-radius:13px;border:1px solid rgba(96,220,255,.19);background:rgba(9,54,71,.62);color:#b9edfa;font-size:11px;font-weight:850;white-space:nowrap}
+@media(max-width:900px){.hs-brand-title{font-size:34px}.hs-brand-sub{max-width:72%;line-height:1.5}.hs-status{display:none}.hs-hero{padding:25px 23px;min-height:350px}.hs-hero-orbit{right:-180px;top:90px;opacity:.65}.hs-command{grid-template-columns:1fr}.hs-dashboard-head{align-items:flex-start;flex-direction:column}.hs-location-badge{white-space:normal}}
+@media(max-width:600px){.block-container{padding:.8rem .8rem 3rem}.hs-brand{padding:20px 19px;border-radius:22px}.hs-brand-title{font-size:29px;letter-spacing:4px}.hs-brand-sub{font-size:8px;letter-spacing:1.1px;max-width:100%}.hs-topbar{padding:10px 12px}.hs-topbar-copy{font-size:8px}.hs-topbar-live{font-size:8px}.hs-hero{border-radius:23px;padding:23px 19px}.hs-hero-title{font-size:35px}.hs-hero-copy{font-size:12px}.hs-hero-orbit{width:290px;height:290px;right:-145px;top:150px}.hs-dam-scene{height:300px;border-radius:22px}.hs-game{padding:15px;border-radius:22px}.hs-game-title{font-size:28px}.hs-dashboard-title{font-size:28px}div[data-testid="stMetric"]{min-height:94px;padding:13px}}
+
 /* Remove default Streamlit decoration */
 #MainMenu,footer{visibility:hidden}
 </style>
@@ -649,14 +696,16 @@ if "page" not in st.session_state: st.session_state.page="Home"
 if "authority" not in st.session_state: st.session_state.authority=False
 
 st.markdown('<div class="hs-brand"><div class="hs-brand-title"><span>HYDRO</span>SCOPE</div><div class="hs-brand-sub">PUBLIC FLOOD AWARENESS  /  DAM MONITORING  /  PREDICTIVE WATER INTELLIGENCE</div><div class="hs-status"><span class="hs-dot"></span>SYSTEM ONLINE</div></div>',unsafe_allow_html=True)
-st.write("")
+st.markdown('<div class="hs-topbar"><div class="hs-topbar-copy">Kerala water intelligence interface</div><div class="hs-topbar-live"><span class="hs-live-line"></span>Live weather connection</div></div>',unsafe_allow_html=True)
 
 nav=["Home","Public Dashboard","Hydro Run","Authority Access"]
 if st.session_state.authority: nav += ["Prediction","Authority Console","Hydraulic Simulation"]
 cols=st.columns(len(nav))
 for c,name in zip(cols,nav):
     with c:
-        if st.button(name,key="nav_"+name): st.session_state.page=name; st.rerun()
+        active = st.session_state.page == name
+        if st.button(name,key="nav_"+name,type="primary" if active else "secondary"):
+            st.session_state.page=name; st.rerun()
 
 st.divider()
 
@@ -664,11 +713,34 @@ st.divider()
 # HOME
 # ============================================================
 if st.session_state.page=="Home":
-    st.markdown('<div class="hs-section">A living view of changing water conditions</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    st.markdown('<div class="hs-note">Explore a water-themed public interface where the reservoir, gates and downstream flow visually respond to the current prototype dam state. Weather is live when the OpenWeather connection is available; dam parameters shown here are prototype data.</div>',unsafe_allow_html=True)
-    st.write("")
     home_dam=DAM_DATABASE["Idukki Dam"]
-    st.markdown(interactive_dam_visual(home_dam),unsafe_allow_html=True)
+    st.markdown("""<div class="hs-hero">
+      <div class="hs-hero-orbit"></div>
+      <div class="hs-hero-copywrap">
+        <div class="hs-kicker">Public water intelligence</div>
+        <div class="hs-hero-title">See the water.<br><span>Understand what comes next.</span></div>
+        <div class="hs-hero-copy">HYDROSCOPE connects rainfall, reservoir conditions and downstream awareness in one interactive public interface. Explore a dam, inspect its 24–48 hour outlook, or pilot the fictional Hydro Run game.</div>
+        <div class="hs-hero-actions"><span class="hs-action">DAM MONITORING</span><span class="hs-action">RAINFALL OUTLOOK</span><span class="hs-action">PUBLIC SAFETY</span></div>
+      </div>
+    </div>""",unsafe_allow_html=True)
+    st.write("")
+    a,b=st.columns([1.35,.65])
+    with a:
+        st.markdown(interactive_dam_visual(home_dam),unsafe_allow_html=True)
+    with b:
+        level_pct=min(100,max(5,home_dam["water_level"]))
+        rain_pct=min(100,max(5,home_dam["rainfall"]))
+        st.markdown(f"""<div class="hs-command-panel" style="height:100%;box-sizing:border-box;">
+          <div class="hs-command-label">Current prototype state</div>
+          <div class="hs-command-value">{home_dam["water_level"]:.1f} m</div>
+          <div class="hs-command-copy">Reservoir level · {home_dam["risk"]} condition</div>
+          <div class="hs-signal"><span style="width:{level_pct:.0f}%"></span></div>
+          <div style="height:18px"></div>
+          <div class="hs-command-label">Rainfall input</div>
+          <div class="hs-command-value">{home_dam["rainfall"]:.0f} mm</div>
+          <div class="hs-command-copy">Prototype catchment input · current shutters {home_dam["open_shutters"]}/{home_dam["total_shutters"]}</div>
+          <div class="hs-signal"><span style="width:{rain_pct:.0f}%"></span></div>
+        </div>""",unsafe_allow_html=True)
     st.write("")
     a,b,c,d=st.columns(4)
     a.metric("Water level",f'{home_dam["water_level"]:.1f} m')
@@ -678,11 +750,11 @@ if st.session_state.page=="Home":
     st.write("")
     a,b,c=st.columns(3)
     with a:
-        st.markdown('<div class="hs-card"><div class="hs-card-label">01 / Explore</div><div class="hs-card-title">Inspect nearby dams</div><p class="hs-card-copy">Find monitored prototype dams around a Kerala location and open their 24–48 hour public release outlook.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-card"><div class="hs-card-label">01 / DISCOVER</div><div class="hs-card-title">Inspect nearby dams</div><p class="hs-card-copy">Find monitored prototype dams around a Kerala location and open a focused 24–48 hour public release outlook.</p></div>',unsafe_allow_html=True)
     with b:
-        st.markdown('<div class="hs-card"><div class="hs-card-label">02 / Understand</div><div class="hs-card-title">Watch the water story</div><p class="hs-card-copy">The reservoir, gates and downstream river are presented as one connected visual story.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-card"><div class="hs-card-label">02 / UNDERSTAND</div><div class="hs-card-title">Follow the water story</div><p class="hs-card-copy">Reservoir level, gates and downstream flow become one connected visual story instead of isolated numbers.</p></div>',unsafe_allow_html=True)
     with c:
-        st.markdown('<div class="hs-card"><div class="hs-card-label">03 / Learn</div><div class="hs-card-title">Play Hydro Run</div><p class="hs-card-copy">Pilot a rescue boat through a rising fictional flood channel using keys, touch controls or phone tilt.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-card"><div class="hs-card-label">03 / EXPERIENCE</div><div class="hs-card-title">Play Hydro Run</div><p class="hs-card-copy">Pilot a rescue boat through a fictional flood channel using keyboard, touch controls or phone tilt.</p></div>',unsafe_allow_html=True)
     st.write("")
     x,y=st.columns(2)
     if x.button("Explore Public Dashboard",key="home_public",type="primary"): st.session_state.page="Public Dashboard"; st.rerun()
@@ -692,7 +764,8 @@ if st.session_state.page=="Home":
 # PUBLIC DASHBOARD
 # ============================================================
 elif st.session_state.page=="Public Dashboard":
-    st.markdown('<div class="hs-section">Public Safety Dashboard</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-dashboard-head"><div><div class="hs-dashboard-title">Public Safety Dashboard</div><div class="hs-dashboard-sub">A location-first view of dams, weather and downstream awareness.</div></div><div class="hs-location-badge">PUBLIC MODE · READ ONLY</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-section-line" style="margin-top:14px"></div>',unsafe_allow_html=True)
     st.markdown('<div class="hs-note">Select a location, then inspect a dam to see its current water condition and a prototype 24–48 hour controlled-release outlook based on forecast rainfall and current reservoir inputs.</div>',unsafe_allow_html=True)
     st.write("")
 

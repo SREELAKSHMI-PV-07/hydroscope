@@ -351,6 +351,60 @@ def release_probability(d,pred):
     score=d["water_level"]*.35+min(100,pred)*.35+min(100,d["inflow"]/20)*.30
     return min(99,round(score))
 
+def release_outlook(d):
+    """Public 24–48 h controlled-release outlook.
+
+    This is a prototype indicator using forecast rainfall and current
+    reservoir conditions. It does NOT predict an operator's decision.
+    Production deployment must use the dam's approved rule curve,
+    official gate status, catchment inflow forecasts and authorised data.
+    """
+    f=forecast(d["lat"],d["lon"])
+    if not f["success"]:
+        return {"success":False,"error":f["error"]}
+    df=f["data"].copy()
+    if df.empty:
+        return {"success":False,"error":"No forecast data available."}
+
+    start=df["datetime"].min()
+    r24=float(df[df["datetime"]<=start+pd.Timedelta(hours=24)]["rainfall"].sum())
+    r48=float(df[df["datetime"]<=start+pd.Timedelta(hours=48)]["rainfall"].sum())
+
+    # Use the existing prototype water-level calculation for a transparent
+    # public indicator; do not present this as an operational forecast.
+    level24=predict_level(d,r24)
+    level48=d["water_level"]+(max(0,d["inflow"]-d["outflow"])/1000)*1.5+(r48/100)*4.0
+
+    current_release=d["open_shutters"]>0 or d["outflow"]>0
+    heavy24=r24>=50
+    heavy48=r48>=80
+    elevated=d["risk"] in {"Moderate","High"}
+
+    if d["open_shutters"]>0:
+        outlook="Release currently active"
+        detail="The prototype data already shows an open shutter state. Continued or adjusted release depends on official reservoir operations."
+        flag="ACTIVE"
+    elif (heavy24 and elevated) or (heavy48 and elevated):
+        outlook="Potential controlled release"
+        detail="Forecast rainfall plus the current reservoir condition indicate that controlled release may need to be considered within the next 24–48 hours."
+        flag="WATCH"
+    elif heavy24 or heavy48:
+        outlook="Rainfall-driven watch"
+        detail="Forecast rainfall is elevated, but the prototype does not have enough verified dam-operation data to indicate a release."
+        flag="WATCH"
+    else:
+        outlook="No release indication"
+        detail="The prototype does not indicate a likely controlled release from the available 24–48 hour rainfall and current reservoir inputs."
+        flag="LOW"
+
+    return {
+        "success":True,"rain24":round(r24,1),"rain48":round(r48,1),
+        "level24":round(level24,2),"level48":round(level48,2),
+        "outlook":outlook,"detail":detail,"flag":flag,
+        "current_release":current_release
+    }
+
+
 # ============================================================
 # HYDRAULIC MODEL — educational prototype
 # ============================================================
@@ -496,8 +550,8 @@ if "authority" not in st.session_state: st.session_state.authority=False
 st.markdown('<div class="hs-brand"><div class="hs-brand-title"><span>HYDRO</span>SCOPE</div><div class="hs-brand-sub">PUBLIC FLOOD AWARENESS  /  DAM MONITORING  /  PREDICTIVE WATER INTELLIGENCE</div><div class="hs-status"><span class="hs-dot"></span>SYSTEM ONLINE</div></div>',unsafe_allow_html=True)
 st.write("")
 
-nav=["Home","Public Dashboard","Prediction","Authority Access"]
-if st.session_state.authority: nav += ["Authority Console","Hydraulic Simulation"]
+nav=["Home","Public Dashboard","Authority Access"]
+if st.session_state.authority: nav += ["Prediction","Authority Console","Hydraulic Simulation"]
 cols=st.columns(len(nav))
 for c,name in zip(cols,nav):
     with c:
@@ -530,7 +584,8 @@ if st.session_state.page=="Home":
 # ============================================================
 elif st.session_state.page=="Public Dashboard":
     st.markdown('<div class="hs-section">Public Safety Dashboard</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    st.markdown('<div class="hs-note">Explore Kerala by district and location. Select a place to see nearby monitored dams, live weather context, water conditions and public release-impact information.</div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-note">Select a location, then inspect a dam to see its current water condition and a prototype 24–48 hour controlled-release outlook based on forecast rainfall and current reservoir inputs.</div>',unsafe_allow_html=True)
+    st.write("")
 
     districts=["All districts"]+list(dict.fromkeys(LOCATION_DISTRICTS.values()))
     c1,c2,c3=st.columns([1.1,1.5,1.0])
@@ -551,100 +606,86 @@ elif st.session_state.page=="Public Dashboard":
     st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Selected location</div><div class="hs-big">{loc}</div><div class="hs-click">{LOCATION_DISTRICTS[loc]} district  |  {lat:.4f}, {lon:.4f}</div></div>',unsafe_allow_html=True)
     st.write("")
 
-    radius=st.slider("Monitoring radius",50,200,120,10,key="public_radius")
     w=weather(lat,lon)
     if w["success"]:
         a,b,c,d=st.columns(4)
         a.metric("Temperature",f"{w['temperature']:.1f} °C")
-        b.metric("Rainfall",f"{w['rainfall']:.1f} mm")
+        b.metric("Rainfall now",f"{w['rainfall']:.1f} mm")
         c.metric("Humidity",f"{w['humidity']}%")
         d.metric("Wind",f"{w['wind']:.1f} m/s")
         st.caption("Weather data provided by OpenWeather.")
 
+    radius=st.slider("Monitoring radius",50,200,120,10,key="public_radius")
     dams=nearby_dams(loc,radius)
     st.markdown(f'<div class="hs-section">Nearby Dams <span class="hs-pill">{len(dams)} within {radius} km</span></div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    if dams:
-        dam_names=[d["name"] for d in dams]
 
-        # Apply an Inspect-button selection before creating the selectbox widget.
-        # Streamlit does not allow changing a widget's keyed session-state value
-        # after that widget has already been instantiated in the same run.
+    if dams:
+        # The Inspect button is the only public interaction that opens the
+        # dam-specific forecast panel. There is no breach slider or release
+        # simulation in the public interface.
         if "public_dam_focus_pending" in st.session_state:
             pending=st.session_state.pop("public_dam_focus_pending")
-            if pending in dam_names:
-                st.session_state["public_dam_focus"] = pending
+            if any(d["name"]==pending for d in dams):
+                st.session_state.public_dam_focus=pending
 
+        dam_names=[d["name"] for d in dams]
         if st.session_state.get("public_dam_focus") not in dam_names:
-            st.session_state["public_dam_focus"] = dam_names[0]
-
-        selected_name=st.selectbox("Select a dam to inspect",dam_names,key="public_dam_focus")
-        focus=next(d for d in dams if d["name"]==selected_name)
-        a,b=st.columns([1.35,.9])
-        with a:
-            st.markdown(f'<div class="hs-card"><div class="hs-card-label">Dam status</div><div class="hs-card-title">{focus["name"]}</div><div class="hs-card-copy">{focus["district"]} district  |  {focus["distance"]:.1f} km from {loc}</div>{water_level_gauge(focus["water_level"])}<div class="hs-card-copy" style="margin-top:16px">Water level indicator</div>{shutter_visual(focus["open_shutters"],focus["total_shutters"])}<div class="hs-card-copy" style="margin-top:8px">Open shutters: <b>{focus["open_shutters"]}/{focus["total_shutters"]}</b>  |  Opening: <b>{focus["opening_percent"]}%</b></div></div>',unsafe_allow_html=True)
-        with b:
-            score=risk_score(focus)
-            st.markdown(f'<div class="hs-card"><div class="hs-card-label">Public condition index</div><div class="hs-card-value">{score}/100</div><p class="hs-card-copy">Prototype indicator combining reservoir level, inflow and shutter opening. It is not an official warning level.</p><span class="hs-pill">{focus["risk"]}</span></div>',unsafe_allow_html=True)
-
-        # ----------------------------------------------------
-        # PUBLIC RELEASE / DOWNSTREAM ALERT PANEL
-        # ----------------------------------------------------
-        st.markdown('<div class="hs-section">Downstream Release Alert</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        st.markdown('<div class="hs-note">This public view shows a hypothetical release-impact assessment based on the selected number of open shutters. It is an awareness indicator, not an official flood warning or gate-operation instruction.</div>',unsafe_allow_html=True)
-
-        scenario_cols=st.columns([1.0,1.0,1.2])
-        with scenario_cols[0]:
-            scenario_shutters=st.select_slider(
-                "Shutters considered open",
-                options=list(range(0,focus["total_shutters"]+1)),
-                value=focus["open_shutters"],
-                key=f"public_shutters_{focus["name"]}"
-            )
-        assessment=public_release_assessment(focus,scenario_shutters)
-        with scenario_cols[1]:
-            st.metric("Estimated release flow",f"{assessment['release']:.0f} m³/s")
-        with scenario_cols[2]:
-            st.metric("Scenario",assessment["level"])
-
-        if scenario_shutters > focus["open_shutters"]:
-            st.warning(f"The selected scenario has {scenario_shutters} shutters open, which is higher than the current prototype state of {focus['open_shutters']}. Downstream areas should be treated as potential impact zones for monitoring.")
-        elif scenario_shutters == focus["open_shutters"]:
-            st.info("The selected scenario matches the current prototype shutter state.")
-        else:
-            st.success("The selected scenario is at or below the current prototype shutter state.")
-
-        st.markdown('<div class="hs-card"><div class="hs-card-label">Potential places to monitor downstream</div><div class="hs-card-title">{}</div><p class="hs-card-copy">{}</p></div>'.format(" • ".join(assessment["zones"]),assessment["status"]),unsafe_allow_html=True)
-        st.caption("Prototype downstream zones. Verified deployment should use dam-specific Emergency Action Plans and GIS inundation layers.")
-
-        c1,c2,c3=st.columns(3)
-        with c1:
-            if st.button("Center map on dam",key="center_dam",use_container_width=True):
-                st.session_state.map_center=(focus["lat"],focus["lon"])
-                st.rerun()
-        with c2:
-            if st.button("Open prediction",key="open_prediction",use_container_width=True):
-                st.session_state.pred_dam=focus["name"]; st.session_state.page="Prediction"; st.rerun()
-        with c3:
-            st.button("Refresh weather",key="refresh_weather",use_container_width=True,on_click=lambda: weather.clear())
+            st.session_state.public_dam_focus=None
 
         cards=st.columns(3)
         for i,d in enumerate(dams):
             with cards[i%3]:
-                st.markdown(f'<div class="hs-card"><span class="hs-pill">{d["risk"]}  /  {d["distance"]:.1f} km</span><div class="hs-card-title" style="margin-top:12px">{d["name"]}</div><div class="hs-card-copy">Level <b>{d["water_level"]:.1f}</b>  |  Inflow <b>{d["inflow"]:.0f}</b> m3/s</div></div>',unsafe_allow_html=True)
+                active=st.session_state.get("public_dam_focus")==d["name"]
+                border='border:1px solid rgba(58,210,255,.85);box-shadow:0 0 24px rgba(35,185,255,.18);' if active else ''
+                st.markdown(f'<div class="hs-card" style="{border}"><span class="hs-pill">{d["risk"]}  /  {d["distance"]:.1f} km</span><div class="hs-card-title" style="margin-top:12px">{d["name"]}</div><div class="hs-card-copy">Water level <b>{d["water_level"]:.1f}</b>  |  Shutters <b>{d["open_shutters"]}/{d["total_shutters"]}</b></div><div class="hs-card-copy">Rainfall input <b>{d["rainfall"]:.0f} mm</b></div></div>',unsafe_allow_html=True)
                 if st.button("Inspect",key=f"inspect_{d['name']}",use_container_width=True):
                     st.session_state.public_dam_focus_pending=d["name"]
                     st.rerun()
+
+        selected=st.session_state.get("public_dam_focus")
+        if selected in dam_names:
+            focus=next(d for d in dams if d["name"]==selected)
+            st.markdown('<div class="hs-section">Dam Release Outlook</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Public inspection</div><div class="hs-big">{focus["name"]}</div><div class="hs-click">Current level {focus["water_level"]:.1f}  |  Current shutters {focus["open_shutters"]}/{focus["total_shutters"]}  |  Distance {focus["distance"]:.1f} km</div></div>',unsafe_allow_html=True)
+
+            outlook=release_outlook(focus)
+            if outlook["success"]:
+                x,y,z,q=st.columns(4)
+                x.metric("24 h forecast rain",f"{outlook['rain24']:.1f} mm")
+                y.metric("48 h forecast rain",f"{outlook['rain48']:.1f} mm")
+                z.metric("24 h projected level",f"{outlook['level24']:.1f}")
+                q.metric("48 h projected level",f"{outlook['level48']:.1f}")
+
+                if outlook["flag"]=="ACTIVE":
+                    st.warning(f"{outlook['outlook']}: the prototype data currently shows {focus['open_shutters']} of {focus['total_shutters']} shutters open.")
+                elif outlook["flag"]=="WATCH":
+                    st.warning(outlook["outlook"]+": review the official dam status and warnings before making safety decisions.")
+                else:
+                    st.success(outlook["outlook"]+" for the next 24–48 hours based on the prototype inputs.")
+
+                st.markdown(f'<div class="hs-card"><div class="hs-card-label">What this means for the public</div><div class="hs-card-title">{outlook["outlook"]}</div><p class="hs-card-copy">{outlook["detail"]}</p></div>',unsafe_allow_html=True)
+
+                zones=DOWNSTREAM_ZONES.get(focus["name"],["Downstream river corridor","Nearby low-lying areas"])
+                st.markdown(f'<div class="hs-card"><div class="hs-card-label">If controlled release occurs</div><div class="hs-card-title">Downstream areas to monitor</div><p class="hs-card-copy">{" • ".join(zones)}</p></div>',unsafe_allow_html=True)
+                st.caption("This is a prototype public-awareness indicator. It does not predict an operator's decision or issue an official evacuation warning. Production use should use the dam's approved rule curve, official gate status, catchment forecast and Emergency Action Plan.")
+            else:
+                st.info(f"Release outlook unavailable: {outlook['error']}")
+        else:
+            st.markdown('<div class="hs-note">Select Inspect on a dam to open its 24–48 hour public release outlook. Detailed flood-depth, velocity, breach and arrival-time simulation is restricted to authorized users.</div>',unsafe_allow_html=True)
     else:
-        st.info("No demo dams are currently within this radius. The public interface is ready for additional verified reservoir feeds.")
+        st.info("No monitored demo dams are within this radius. The public interface is ready for additional verified reservoir feeds.")
 
     st.markdown('<div class="hs-section">Kerala Monitoring Map</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     st_folium(dam_map(loc),height=560,width=None,returned_objects=[])
-    st.markdown('<div class="hs-note">HYDROSCOPE provides public awareness and safety information. Official warnings and evacuation instructions remain the responsibility of authorized agencies. Demo dam parameters are clearly marked as prototype data.</div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-note">HYDROSCOPE provides public awareness and safety information. Official warnings and evacuation instructions remain the responsibility of authorized agencies. Demo dam parameters are prototype data.</div>',unsafe_allow_html=True)
 
 # ============================================================
 # PREDICTION
 # ============================================================
 elif st.session_state.page=="Prediction":
+    if not st.session_state.authority:
+        st.session_state.page="Public Dashboard"
+        st.rerun()
     st.markdown('<div class="hs-section">Water-Level Prediction</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     name=st.selectbox("Select Dam",list(DAM_DATABASE),key="pred_dam"); dam=DAM_DATABASE[name]
     f=forecast(dam["lat"],dam["lon"])

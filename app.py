@@ -310,8 +310,11 @@ components.html(r"""
 """, height=0)
 
 # ============================================================
-# DEMO DATA
 # ============================================================
+# HYDROSCOPE DAM DATA
+# ============================================================
+# The 8 entries below are the current prototype hydraulic/forecast records.
+# Their operating figures are demo values and are NOT live KSEB measurements.
 DAM_DATABASE={
 "Idukki Dam":{"district":"Idukki","lat":9.8494,"lon":76.9726,"water_level":88.0,"inflow":1800.0,"outflow":600.0,"rainfall":72.0,"total_shutters":8,"open_shutters":2,"opening_percent":20,"risk":"Moderate","status":"PROTOTYPE"},
 "Idamalayar Dam":{"district":"Ernakulam","lat":10.2068,"lon":76.7032,"water_level":72.0,"inflow":920.0,"outflow":310.0,"rainfall":48.0,"total_shutters":4,"open_shutters":1,"opening_percent":15,"risk":"Normal","status":"PROTOTYPE"},
@@ -320,7 +323,86 @@ DAM_DATABASE={
 "Pamba Dam":{"district":"Pathanamthitta","lat":9.3805,"lon":76.9275,"water_level":64.0,"inflow":450.0,"outflow":170.0,"rainfall":39.0,"total_shutters":6,"open_shutters":1,"opening_percent":12,"risk":"Normal","status":"PROTOTYPE"},
 "Kakki Dam":{"district":"Pathanamthitta","lat":9.35,"lon":77.0,"water_level":70.0,"inflow":520.0,"outflow":190.0,"rainfall":44.0,"total_shutters":4,"open_shutters":1,"opening_percent":15,"risk":"Normal","status":"PROTOTYPE"},
 "Neyyar Dam":{"district":"Thiruvananthapuram","lat":8.535,"lon":77.145,"water_level":58.0,"inflow":190.0,"outflow":75.0,"rainfall":31.0,"total_shutters":4,"open_shutters":0,"opening_percent":0,"risk":"Normal","status":"PROTOTYPE"},
-"Banasura Sagar Dam":{"district":"Wayanad","lat":11.7,"lon":75.95,"water_level":63.0,"inflow":330.0,"outflow":120.0,"rainfall":52.0,"total_shutters":4,"open_shutters":1,"opening_percent":10,"risk":"Normal","status":"PROTOTYPE"}}
+"Banasura Sagar Dam":{"district":"Wayanad","lat":11.7,"lon":75.95,"water_level":63.0,"inflow":330.0,"outflow":120.0,"rainfall":52.0,"total_shutters":4,"open_shutters":1,"opening_percent":10,"risk":"Normal","status":"PROTOTYPE"}
+}
+
+# ============================================================
+# KERALA DAM REGISTRY — AUTHORITY REFERENCE
+# ============================================================
+# Scope: the 61 operational large-dam entries corresponding to the Kerala
+# section of the CWC/NRLD register used for this prototype, with the older
+# Attapady under-construction entry excluded, plus two additional major
+# state-listed reservoirs (Banasura Sagar and Bhoothathankettu).
+# Registry metadata is for identification/reference. It is NOT a live feed.
+KERALA_DAM_REGISTRY={
+    "Kundala Dam":{"district":"Idukki","operator":"KSEB","year":1947,"river":"Mudirapuzha","lat":10.10,"lon":77.18},
+    "Sengulam Dam":{"district":"Idukki","operator":"KSEB","year":1957,"river":"Mudirapuzha","lat":10.00,"lon":77.04},
+    "Malampuzha Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1955,"river":"Bharathapuzha","lat":10.83,"lon":76.69},
+    "Walayar Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1956,"river":"Bharathapuzha","lat":10.75,"lon":76.78},
+    "Mattupetty Dam":{"district":"Idukki","operator":"KSEB","year":1956,"river":"Mudirapuzha","lat":10.11,"lon":77.13},
+    "Poringalkuthu Dam":{"district":"Thrissur","operator":"KSEB","year":1957,"river":"Chalakudy","lat":10.37,"lon":76.62},
+    "Vazhani Dam":{"district":"Thrissur","operator":"Kerala Irrigation Department","year":1957,"river":"Kechery","lat":10.65,"lon":76.33},
+    "Peechi Dam":{"district":"Thrissur","operator":"Kerala Irrigation Department","year":1958,"river":"Karuvannur","lat":10.53,"lon":76.34},
+    "Neyyar Dam":{"district":"Thiruvananthapuram","operator":"Kerala Irrigation Department","year":1959,"river":"Neyyar","lat":8.535,"lon":77.145},
+    "Meenkara Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1960,"river":"Gayathri","lat":10.63,"lon":76.79},
+    "Kallarkutty Dam":{"district":"Idukki","operator":"KSEB","year":1961,"river":"Mudirapuzha","lat":10.00,"lon":77.02},
+    "Ponmudi Dam":{"district":"Idukki","operator":"KSEB","year":1965,"river":"Panniar","lat":9.98,"lon":77.06},
+    "Periyar Valley Barrage":{"district":"Ernakulam","operator":"Kerala Irrigation Department","year":1964,"river":"Periyar","lat":10.14,"lon":76.67},
+    "Anayirankal Dam":{"district":"Idukki","operator":"KSEB","year":1965,"river":"Panniar","lat":10.03,"lon":77.15},
+    "Sholayar Flanking Dam":{"district":"Thrissur","operator":"KSEB","year":1965,"river":"Chalakudy","lat":10.36,"lon":76.75},
+    "Sholayar Main Dam":{"district":"Thrissur","operator":"KSEB","year":1965,"river":"Chalakudy","lat":10.36,"lon":76.75},
+    "Sholayar Saddle Dam":{"district":"Thrissur","operator":"KSEB","year":1965,"river":"Chalakudy","lat":10.36,"lon":76.75},
+    "Chulliyar Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1966,"river":"Gayathri","lat":10.60,"lon":76.60},
+    "Kakki Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1966,"river":"Pamba","lat":9.35,"lon":77.26},
+    "Mangalam Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1966,"river":"Bharathapuzha","lat":10.53,"lon":76.45},
+    "Anathode Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1967,"river":"Pamba","lat":9.34,"lon":77.22},
+    "Pamba Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1967,"river":"Pamba","lat":9.39,"lon":76.95},
+    "Pothundy Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1967,"river":"Ayalur","lat":10.58,"lon":76.70},
+    "Aruvikkara Dam":{"district":"Thiruvananthapuram","operator":"Kerala Water Authority","year":1972,"river":"Karamana","lat":8.57,"lon":77.02},
+    "Kuttiyadi HE Project Dam":{"district":"Kozhikode","operator":"KSEB","year":1972,"river":"Kuttiyadi","lat":11.54,"lon":75.84},
+    "Kuttiyadi Irrigation Project Dam":{"district":"Kozhikode","operator":"Kerala Irrigation Department","year":1973,"river":"Kuttiyadi","lat":11.61,"lon":75.82},
+    "Idukki Dam":{"district":"Idukki","operator":"KSEB","year":1975,"river":"Periyar","lat":9.8494,"lon":76.9726},
+    "Cheruthoni Dam":{"district":"Idukki","operator":"KSEB","year":1976,"river":"Periyar","lat":9.8453,"lon":76.9653},
+    "Maniyar Dam":{"district":"Pathanamthitta","operator":"Kerala Irrigation Department","year":1976,"river":"Pamba","lat":9.36,"lon":76.84},
+    "Kulamavu Dam":{"district":"Idukki","operator":"KSEB","year":1977,"river":"Periyar","lat":9.81,"lon":76.90},
+    "Pazhassi Dam":{"district":"Kannur","operator":"Kerala Irrigation Department","year":1978,"river":"Valapattanam","lat":11.98,"lon":75.62},
+    "Upper Moozhiyar Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1979,"river":"Pamba","lat":9.30,"lon":77.07},
+    "Kanjirappuzha Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1983,"river":"Bharathapuzha","lat":10.98,"lon":76.55},
+    "Peppara Dam":{"district":"Thiruvananthapuram","operator":"Kerala Water Authority","year":1983,"river":"Karamana","lat":8.70,"lon":77.15},
+    "Siruvani Dam":{"district":"Palakkad","operator":"Kerala Irrigation Department","year":1984,"river":"Siruvani","lat":10.9767,"lon":76.6417},
+    "Idamalayar Dam":{"district":"Ernakulam","operator":"KSEB","year":1987,"river":"Periyar","lat":10.2068,"lon":76.7032},
+    "Kallada Dam (Parappar)":{"district":"Kollam","operator":"Kerala Irrigation Department","year":1986,"river":"Kallada","lat":8.96,"lon":77.06},
+    "Erattayar Dam":{"district":"Idukki","operator":"KSEB","year":1991,"river":"Periyar","lat":9.72,"lon":77.08},
+    "Gavi Dam (SA Diversion)":{"district":"Pathanamthitta","operator":"KSEB","year":1989,"river":"Gaviar","lat":9.43,"lon":77.03},
+    "Kullar Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1990,"river":"Pamba","lat":9.43,"lon":77.03},
+    "Moozhiyar Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1990,"river":"Pamba","lat":9.36,"lon":76.95},
+    "Veluthode Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1990,"river":"Pamba","lat":9.32,"lon":76.98},
+    "Kosani Saddle Dam":{"district":"Wayanad","operator":"KSEB","year":1991,"river":"Kabani","lat":11.61,"lon":75.95},
+    "Kuttiyadi Augmentation Main Dam":{"district":"Wayanad","operator":"KSEB","year":2004,"river":"Kabani","lat":11.67,"lon":75.96},
+    "Meenar I Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1991,"river":"Pamba","lat":9.42,"lon":77.08},
+    "Meenar II Dam":{"district":"Pathanamthitta","operator":"KSEB","year":1991,"river":"Pamba","lat":9.42,"lon":77.08},
+    "Kuttiyadi Saddle Dam":{"district":"Wayanad","operator":"KSEB","year":1992,"river":"Kabani","lat":11.61,"lon":75.95},
+    "Malankara Dam":{"district":"Idukki","operator":"Kerala Irrigation Department","year":1994,"river":"Muvattupuzha","lat":9.91,"lon":76.71},
+    "Chimmini Dam":{"district":"Thrissur","operator":"Kerala Irrigation Department","year":1996,"river":"Karuvannur","lat":10.43,"lon":76.46},
+    "Pambla Dam (Lower Periyar)":{"district":"Idukki","operator":"KSEB","year":1997,"river":"Periyar","lat":10.06,"lon":76.68},
+    "Karapuzha Dam":{"district":"Wayanad","operator":"Kerala Irrigation Department","year":2004,"river":"Karapuzha","lat":11.62,"lon":76.10},
+    "Mullaperiyar Dam":{"district":"Idukki","operator":"WRD, Tamil Nadu","year":1895,"river":"Periyar","lat":9.5286,"lon":77.1442},
+    "Thunakkadavu Dam":{"district":"Palakkad","operator":"WRD, Tamil Nadu","year":1965,"river":"Chalakudy","lat":10.4344,"lon":76.7820},
+    "Parambikulam Dam":{"district":"Palakkad","operator":"WRD, Tamil Nadu","year":1967,"river":"Chalakudy","lat":10.3875,"lon":76.7692},
+    "Peruvarippallam Dam":{"district":"Palakkad","operator":"WRD, Tamil Nadu","year":1971,"river":"Chalakudy","lat":10.4475,"lon":76.7667},
+    "Kotagiri Saddle Dam":{"district":"Wayanad","operator":"KSEB","year":1992,"river":"Kabani","lat":11.6147,"lon":75.9161},
+    "Near Kottagiri Saddle Dam":{"district":"Wayanad","operator":"KSEB","year":1992,"river":"Kabani","lat":11.6122,"lon":75.9167},
+    "Kuttiyadi Augmentation Spillway Dam":{"district":"Wayanad","operator":"KSEB","year":2004,"river":"Kabani","lat":11.6728,"lon":75.9558},
+    "Kallar Dam":{"district":"Idukki","operator":"KSEB","year":1989,"river":"Periyar","lat":10.1083,"lon":77.0670},
+    "Ranni Perinad Dam":{"district":"Pathanamthitta","operator":"KSEB","year":2005,"river":"Kallar","lat":9.35,"lon":76.87},
+    "Kulamavu Saddle Dam":{"district":"Idukki","operator":"KSEB","year":1977,"river":"Periyar","lat":9.80,"lon":76.90},
+    # Major state-listed reservoirs that are also present in current Kerala
+    # public dam/reservoir sources but were not represented in the older NRLD
+    # subset used above.
+    "Banasura Sagar Dam":{"district":"Wayanad","operator":"KSEB","year":1979,"river":"Karamanthodu/Kabini system","lat":11.70,"lon":75.95},
+    "Bhoothathankettu Dam":{"district":"Ernakulam","operator":"Kerala Irrigation Department","year":1962,"river":"Periyar","lat":10.15,"lon":76.68},
+}
+
 # Major Kerala locations: district headquarters plus major cities/towns used as public search points.
 # Coordinates are representative map points; they are not intended as precise user geolocation.
 LOCATIONS={
@@ -625,6 +707,21 @@ DOWNSTREAM_ZONES={
     "Neyyar Dam":["Neyyattinkara downstream corridor","Neyyar river-side areas","Low-lying Neyyar basin areas"],
     "Banasura Sagar Dam":["Padinjarathara downstream corridor","Panamaram river-side areas","Low-lying Kabini basin areas"]
 }
+
+# Add registry-wide illustrative downstream corridors after the curated entries above.
+for _name, _meta in KERALA_DAM_REGISTRY.items():
+    _city = {
+        "Idukki":"Idukki district downstream corridor",
+        "Pathanamthitta":"Pamba basin downstream corridor",
+        "Wayanad":"Wayanad downstream river corridor",
+        "Palakkad":"Palakkad downstream corridor",
+        "Thrissur":"Thrissur downstream river corridor",
+        "Ernakulam":"Periyar/Ernakulam downstream corridor",
+        "Kollam":"Kollam downstream corridor",
+        "Thiruvananthapuram":"Thiruvananthapuram downstream corridor",
+        "Kannur":"Kannur downstream corridor",
+    }.get(_meta["district"], f"{_meta['district']} downstream corridor")
+    DOWNSTREAM_ZONES.setdefault(_name, [_city, f"Low-lying areas along the {_meta['river']} downstream reach"])
 
 def projected_release(d, scenario_shutters):
     # This is a transparent prototype scaling, not a gate-discharge equation.
@@ -1027,11 +1124,23 @@ elif st.session_state.page=="Structural Safety":
         st.session_state.page="Authority Access"; st.rerun()
     st.markdown('<div class="hs-section">Structural Safety Assessment</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     st.markdown('<div class="hs-note"><b>Authority-only engineering screening.</b> This module combines structural-condition indicators, historical trends and current hydraulic loading. The current structural dataset is explicitly marked PROTOTYPE because HYDROSCOPE is not yet connected to authorised inspection/instrumentation feeds. It must not be interpreted as a certified dam-safety assessment or a prediction that a dam will fail.</div>',unsafe_allow_html=True)
-    name=st.selectbox("Select Dam",list(DAM_DATABASE),key="struct_dam")
-    dam=DAM_DATABASE[name]
+    name=st.selectbox("Select Dam",list(KERALA_DAM_REGISTRY),key="struct_dam")
+    meta=KERALA_DAM_REGISTRY[name]
+    dam=DAM_DATABASE.get(name,{
+        "district":meta["district"],"lat":meta["lat"],"lon":meta["lon"],
+        "water_level":float("nan"),"inflow":float("nan"),"outflow":float("nan"),
+        "rainfall":float("nan"),"total_shutters":0,"open_shutters":0,"opening_percent":0,
+        "risk":"Data unavailable","status":"REGISTRY ONLY"
+    })
     result=structural_assessment(name,dam)
     if result.get("status")=="DATA UNAVAILABLE":
-        st.warning("Structural-health data are unavailable for this dam.")
+        st.info("This dam is included in the Kerala authority registry, but verified structural-health/instrumentation data are not connected to the prototype yet.")
+        a,b,c,d4=st.columns(4)
+        a.metric("District",meta["district"])
+        b.metric("Operator",meta["operator"])
+        c.metric("Completion year",str(meta["year"]))
+        d4.metric("Data status","REGISTRY ONLY")
+        st.caption(f"River: {meta['river']}  ·  Registry coordinates: {meta['lat']:.4f}, {meta['lon']:.4f}")
     else:
         s=result["data"]
         a,b,c,d4=st.columns(4)

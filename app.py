@@ -387,9 +387,61 @@ def saint_venant_2d(dam, breach_fraction=0.55, nx=70, ny=42, steps=90):
         depth_peak=np.maximum(depth_peak,h)
     return {"X":X,"Y":Y,"depth":depth_peak,"arrival":arrival,"peak_velocity":float(np.nanmax(np.sqrt(u*u+v*v))),"peak_discharge":peak*1000}
 
-def public_release_impact(d):
-    score=min(1,(d["open_shutters"]/max(1,d["total_shutters"]))*0.6+d["opening_percent"]/100*.4)
-    return [("Immediate downstream","Monitor" if score<.45 else "Attention"),("Near downstream","Monitor" if score<.65 else "Attention"),("Low-lying areas","Watch" if score<.8 else "Attention")]
+# Prototype downstream corridors. These are illustrative monitoring zones only;
+# production HYDROSCOPE must load verified downstream locations from the dam's
+# approved Emergency Action Plan (EAP), rule-curve data and GIS layers.
+DOWNSTREAM_ZONES={
+    "Idukki Dam":["Cheruthoni","Karimban","Vazhathoppe","Lower Periyar corridor"],
+    "Idamalayar Dam":["Pooyamkutty corridor","Kothamangalam downstream belt","Periyar low-lying areas"],
+    "Malankara Dam":["Thodupuzha downstream corridor","Muvattupuzha river-side areas"],
+    "Bhoothathankettu":["Kothamangalam downstream corridor","Periyar river-side areas","Low-lying Periyar settlements"],
+    "Pamba Dam":["Ranni downstream corridor","Pampa river-side areas","Chengannur low-lying areas"],
+    "Kakki Dam":["Kakki–Pampa downstream corridor","Ranni river-side areas","Pampa basin low-lying areas"],
+    "Neyyar Dam":["Neyyattinkara downstream corridor","Neyyar river-side areas","Low-lying Neyyar basin areas"],
+    "Banasura Sagar Dam":["Padinjarathara downstream corridor","Panamaram river-side areas","Low-lying Kabini basin areas"]
+}
+
+def projected_release(d, scenario_shutters):
+    # This is a transparent prototype scaling, not a gate-discharge equation.
+    # It estimates relative release pressure from the current demo outflow and
+    # the change in number of open shutters.
+    current=d["open_shutters"]
+    current_open=max(1,current)
+    if scenario_shutters==0:
+        return 0.0
+    if current==0:
+        return d["outflow"]*(scenario_shutters/max(1,d["total_shutters"]))
+    return d["outflow"]*(scenario_shutters/current)
+
+def public_release_assessment(d, scenario_shutters):
+    total=max(1,d["total_shutters"])
+    fraction=scenario_shutters/total
+    current_fraction=d["open_shutters"]/total
+    # Public-facing classification is intentionally conservative and descriptive.
+    if scenario_shutters==0:
+        level="No gate opening scenario"
+    elif fraction <= .25:
+        level="Lower release scenario"
+    elif fraction <= .50:
+        level="Moderate release scenario"
+    elif fraction <= .75:
+        level="High release scenario"
+    else:
+        level="Very high release scenario"
+
+    zones=DOWNSTREAM_ZONES.get(d["name"],["Downstream river corridor","Nearby low-lying areas"])
+    affected_count=max(1,min(len(zones),1+int(round(fraction*len(zones)))))
+    if scenario_shutters <= d["open_shutters"]:
+        status="Within or below the current prototype gate-opening state"
+    else:
+        status="Higher than the current prototype gate-opening state"
+    return {
+        "level":level,
+        "status":status,
+        "release":projected_release(d,scenario_shutters),
+        "zones":zones[:affected_count],
+        "current_fraction":current_fraction
+    }
 
 def dam_map(location):
     lat,lon=LOCATIONS[location]
@@ -533,8 +585,36 @@ elif st.session_state.page=="Public Dashboard":
         with b:
             score=risk_score(focus)
             st.markdown(f'<div class="hs-card"><div class="hs-card-label">Public condition index</div><div class="hs-card-value">{score}/100</div><p class="hs-card-copy">Prototype indicator combining reservoir level, inflow and shutter opening. It is not an official warning level.</p><span class="hs-pill">{focus["risk"]}</span></div>',unsafe_allow_html=True)
-            zones=public_release_impact(focus)
-            st.markdown('<div class="hs-card" style="margin-top:14px"><div class="hs-card-label">Potential downstream impact</div>'+''.join(f'<div class="hs-card-copy" style="margin-top:9px"><b>{z}</b><span style="float:right">{r}</span></div>' for z,r in zones)+'</div>',unsafe_allow_html=True)
+
+        # ----------------------------------------------------
+        # PUBLIC RELEASE / DOWNSTREAM ALERT PANEL
+        # ----------------------------------------------------
+        st.markdown('<div class="hs-section">Downstream Release Alert</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-note">This public view shows a hypothetical release-impact assessment based on the selected number of open shutters. It is an awareness indicator, not an official flood warning or gate-operation instruction.</div>',unsafe_allow_html=True)
+
+        scenario_cols=st.columns([1.0,1.0,1.2])
+        with scenario_cols[0]:
+            scenario_shutters=st.select_slider(
+                "Shutters considered open",
+                options=list(range(0,focus["total_shutters"]+1)),
+                value=focus["open_shutters"],
+                key=f"public_shutters_{focus["name"]}"
+            )
+        assessment=public_release_assessment(focus,scenario_shutters)
+        with scenario_cols[1]:
+            st.metric("Estimated release flow",f"{assessment['release']:.0f} m³/s")
+        with scenario_cols[2]:
+            st.metric("Scenario",assessment["level"])
+
+        if scenario_shutters > focus["open_shutters"]:
+            st.warning(f"The selected scenario has {scenario_shutters} shutters open, which is higher than the current prototype state of {focus['open_shutters']}. Downstream areas should be treated as potential impact zones for monitoring.")
+        elif scenario_shutters == focus["open_shutters"]:
+            st.info("The selected scenario matches the current prototype shutter state.")
+        else:
+            st.success("The selected scenario is at or below the current prototype shutter state.")
+
+        st.markdown('<div class="hs-card"><div class="hs-card-label">Potential places to monitor downstream</div><div class="hs-card-title">{}</div><p class="hs-card-copy">{}</p></div>'.format(" • ".join(assessment["zones"]),assessment["status"]),unsafe_allow_html=True)
+        st.caption("Prototype downstream zones. Verified deployment should use dam-specific Emergency Action Plans and GIS inundation layers.")
 
         c1,c2,c3=st.columns(3)
         with c1:

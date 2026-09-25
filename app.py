@@ -357,6 +357,95 @@ LOCATION_DISTRICTS={
 }
 
 # ============================================================
+# AUTHORITY STRUCTURAL SAFETY — prototype assessment inputs
+# ============================================================
+# These values are explicitly marked as PROTOTYPE because the current app does
+# not have authorised structural-health/instrumentation feeds from each dam.
+# They are NOT official KSEB/CWC measurements and must be replaced before use.
+STRUCTURAL_DATABASE={
+    "Idukki Dam": {"construction_year":1976,"material":"Concrete / masonry","rehab_year":2018,"inspection_age_years":1.0,"crack_index":0.18,"crack_growth":0.03,"seepage_index":0.22,"seepage_growth":0.04,"deformation_index":0.16,"deformation_growth":0.02,"material_decay":0.12,"foundation_index":0.12,"seismic_index":0.10,"data_status":"PROTOTYPE"},
+    "Idamalayar Dam": {"construction_year":1987,"material":"Concrete","rehab_year":2019,"inspection_age_years":1.0,"crack_index":0.14,"crack_growth":0.02,"seepage_index":0.16,"seepage_growth":0.02,"deformation_index":0.13,"deformation_growth":0.02,"material_decay":0.10,"foundation_index":0.10,"seismic_index":0.08,"data_status":"PROTOTYPE"},
+    "Malankara Dam": {"construction_year":1987,"material":"Concrete / earthfill","rehab_year":2020,"inspection_age_years":1.0,"crack_index":0.12,"crack_growth":0.02,"seepage_index":0.15,"seepage_growth":0.03,"deformation_index":0.11,"deformation_growth":0.01,"material_decay":0.11,"foundation_index":0.11,"seismic_index":0.07,"data_status":"PROTOTYPE"},
+    "Bhoothathankettu": {"construction_year":1962,"material":"Concrete / masonry","rehab_year":2017,"inspection_age_years":1.0,"crack_index":0.20,"crack_growth":0.04,"seepage_index":0.24,"seepage_growth":0.04,"deformation_index":0.18,"deformation_growth":0.03,"material_decay":0.17,"foundation_index":0.15,"seismic_index":0.09,"data_status":"PROTOTYPE"},
+    "Pamba Dam": {"construction_year":1987,"material":"Concrete","rehab_year":2020,"inspection_age_years":1.0,"crack_index":0.13,"crack_growth":0.02,"seepage_index":0.17,"seepage_growth":0.02,"deformation_index":0.12,"deformation_growth":0.02,"material_decay":0.10,"foundation_index":0.11,"seismic_index":0.08,"data_status":"PROTOTYPE"},
+    "Kakki Dam": {"construction_year":1966,"material":"Concrete / masonry","rehab_year":2016,"inspection_age_years":1.0,"crack_index":0.19,"crack_growth":0.03,"seepage_index":0.21,"seepage_growth":0.03,"deformation_index":0.17,"deformation_growth":0.02,"material_decay":0.16,"foundation_index":0.14,"seismic_index":0.09,"data_status":"PROTOTYPE"},
+    "Neyyar Dam": {"construction_year":1959,"material":"Concrete / masonry","rehab_year":2015,"inspection_age_years":1.0,"crack_index":0.22,"crack_growth":0.04,"seepage_index":0.23,"seepage_growth":0.04,"deformation_index":0.20,"deformation_growth":0.03,"material_decay":0.19,"foundation_index":0.16,"seismic_index":0.08,"data_status":"PROTOTYPE"},
+    "Banasura Sagar Dam": {"construction_year":1979,"material":"Earthfill","rehab_year":2019,"inspection_age_years":1.0,"crack_index":0.15,"crack_growth":0.02,"seepage_index":0.18,"seepage_growth":0.03,"deformation_index":0.14,"deformation_growth":0.02,"material_decay":0.12,"foundation_index":0.12,"seismic_index":0.08,"data_status":"PROTOTYPE"},
+}
+
+
+def structural_assessment(dam_name, dam):
+    """Transparent prototype structural-health screening.
+
+    This is NOT a dam-break probability model. It combines prototype condition
+    indicators with current hydraulic loading to identify when an engineering
+    review should be considered. Replace every prototype input with verified
+    inspection/instrumentation data before operational use.
+    """
+    s=STRUCTURAL_DATABASE.get(dam_name)
+    if not s:
+        return {"status":"DATA UNAVAILABLE"}
+    current_year=pd.Timestamp.now().year
+    age=max(0,current_year-s["construction_year"])
+    age_factor=min(1.0,age/100)
+    loading=min(1.0,max(0.0,dam["water_level"]/100))
+    inflow_factor=min(1.0,max(0.0,dam["inflow"]/2000))
+    seepage=s["seepage_index"]
+    crack=s["crack_index"]
+    deformation=s["deformation_index"]
+    decay=s["material_decay"]
+    foundation=s["foundation_index"]
+    anomaly_components={
+        "Seepage":s["seepage_growth"],
+        "Crack growth":s["crack_growth"],
+        "Deformation":s["deformation_growth"],
+    }
+    trend_score=np.mean(list(anomaly_components.values()))
+    sci=100*(
+        0.12*age_factor+
+        0.18*crack+
+        0.18*seepage+
+        0.15*deformation+
+        0.17*decay+
+        0.12*foundation+
+        0.08*trend_score/0.05
+    )
+    loading_score=100*(0.65*loading+0.35*inflow_factor)
+    combined=min(100,0.65*sci+0.35*loading_score)
+    if combined>=70: status="CRITICAL"
+    elif combined>=50: status="ELEVATED"
+    elif combined>=30: status="WATCH"
+    else: status="NORMAL"
+
+    modes={
+        "Overtopping / hydraulic loading":min(100,round(100*(0.7*loading+0.3*inflow_factor))),
+        "Excessive seepage":min(100,round(100*(0.75*seepage+0.25*max(0,s["seepage_growth"])/0.05))),
+        "Cracking / material deterioration":min(100,round(100*(0.55*crack+0.30*decay+0.15*max(0,s["crack_growth"])/0.05))),
+        "Deformation / movement":min(100,round(100*(0.75*deformation+0.25*max(0,s["deformation_growth"])/0.05))),
+        "Foundation condition":min(100,round(100*foundation)),
+        "Seismic screening":min(100,round(100*s["seismic_index"])),
+    }
+    if max(modes.values())>=70: review="Engineering review recommended"
+    elif max(modes.values())>=50: review="Enhanced monitoring recommended"
+    else: review="Routine monitoring"
+    return {"status":status,"sci":sci,"combined":combined,"loading_score":loading_score,"age":age,"data":s,"modes":modes,"review":review,"trend_score":trend_score}
+
+
+def structural_history(dam_name):
+    """Generate a clearly labelled prototype trend series from the prototype baseline."""
+    s=STRUCTURAL_DATABASE[dam_name]
+    years=np.arange(2019,2027)
+    def series(base,growth,scale=1.0):
+        return np.clip(base + growth*np.arange(len(years))*scale,0,1)
+    return pd.DataFrame({
+        "Year":years,
+        "Seepage index":series(s["seepage_index"],s["seepage_growth"],1),
+        "Crack index":series(s["crack_index"],s["crack_growth"],1),
+        "Deformation index":series(s["deformation_index"],s["deformation_growth"],1),
+        "Material deterioration":series(max(0.01,s["material_decay"]-0.03),s["material_decay"]/8,1),
+    })
+
+# ============================================================
 # HELPERS
 # ============================================================
 def distance_km(lat1,lon1,lat2,lon2):
@@ -699,7 +788,7 @@ st.markdown('<div class="hs-brand"><div class="hs-brand-title"><span>HYDRO</span
 st.markdown('<div class="hs-topbar"><div class="hs-topbar-copy">Kerala water intelligence interface</div><div class="hs-topbar-live"><span class="hs-live-line"></span>Live weather connection</div></div>',unsafe_allow_html=True)
 
 nav=["Home","Public Dashboard","Hydro Run","Authority Access"]
-if st.session_state.authority: nav += ["Prediction","Authority Console","Hydraulic Simulation"]
+if st.session_state.authority: nav += ["Prediction","Authority Console","Structural Safety","Hydraulic Simulation"]
 cols=st.columns(len(nav))
 for c,name in zip(cols,nav):
     with c:
@@ -929,6 +1018,65 @@ elif st.session_state.page=="Authority Console":
     factors=pd.DataFrame({"Factor":["Reservoir level","Inflow","Rainfall","Shutter opening","Net flow"],"Value":[dam["water_level"],dam["inflow"],dam["rainfall"],dam["opening_percent"],max(0,dam["inflow"]-dam["outflow"])],"Unit":["m","m³/s","mm","%","m³/s"]})
     st.dataframe(factors,use_container_width=True,hide_index=True)
     st.markdown('<div class="hs-note">Open the Hydraulic Simulation page for the detailed 2-D scenario model.</div>',unsafe_allow_html=True)
+
+# ============================================================
+# AUTHORITY STRUCTURAL SAFETY
+# ============================================================
+elif st.session_state.page=="Structural Safety":
+    if not st.session_state.authority:
+        st.session_state.page="Authority Access"; st.rerun()
+    st.markdown('<div class="hs-section">Structural Safety Assessment</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-note"><b>Authority-only engineering screening.</b> This module combines structural-condition indicators, historical trends and current hydraulic loading. The current structural dataset is explicitly marked PROTOTYPE because HYDROSCOPE is not yet connected to authorised inspection/instrumentation feeds. It must not be interpreted as a certified dam-safety assessment or a prediction that a dam will fail.</div>',unsafe_allow_html=True)
+    name=st.selectbox("Select Dam",list(DAM_DATABASE),key="struct_dam")
+    dam=DAM_DATABASE[name]
+    result=structural_assessment(name,dam)
+    if result.get("status")=="DATA UNAVAILABLE":
+        st.warning("Structural-health data are unavailable for this dam.")
+    else:
+        s=result["data"]
+        a,b,c,d4=st.columns(4)
+        a.metric("Dam age",f"{result['age']} years")
+        b.metric("Structural Condition Index",f"{result['sci']:.1f}/100")
+        c.metric("Current Loading Index",f"{result['loading_score']:.1f}/100")
+        d4.metric("Safety Screening",result["status"])
+
+        st.markdown('<div class="hs-section">Current Structural Condition</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        cols=st.columns(4)
+        cols[0].metric("Crack indicator",f"{s['crack_index']*100:.0f}%")
+        cols[1].metric("Seepage indicator",f"{s['seepage_index']*100:.0f}%")
+        cols[2].metric("Deformation indicator",f"{s['deformation_index']*100:.0f}%")
+        cols[3].metric("Material deterioration",f"{s['material_decay']*100:.0f}%")
+        st.caption(f"Construction year: {s['construction_year']}  ·  Material: {s['material']}  ·  Last prototype rehabilitation marker: {s['rehab_year']}  ·  Data status: {s['data_status']}")
+
+        st.markdown('<div class="hs-section">Historical Behaviour</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        hist=structural_history(name)
+        fig=go.Figure()
+        for col in ["Seepage index","Crack index","Deformation index","Material deterioration"]:
+            fig.add_trace(go.Scatter(x=hist["Year"],y=hist[col]*100,mode="lines+markers",name=col))
+        fig.update_layout(template="plotly_dark",height=390,yaxis_title="Prototype condition index (%)",xaxis_title="Year",legend_title="Indicator")
+        st.plotly_chart(fig,use_container_width=True)
+        st.caption("Prototype trend only. Replace these generated trend values with dated inspection and instrumentation records before using this module operationally.")
+
+        st.markdown('<div class="hs-section">Historical Anomaly Indicators</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        anomaly=pd.DataFrame({
+            "Indicator":["Seepage","Crack growth","Deformation"],
+            "Current trend increase (%)":[round(s["seepage_growth"]*100,1),round(s["crack_growth"]*100,1),round(s["deformation_growth"]*100,1)],
+            "Screening status":["Increasing" if s["seepage_growth"]>0.025 else "Stable","Increasing" if s["crack_growth"]>0.025 else "Stable","Increasing" if s["deformation_growth"]>0.025 else "Stable"]
+        })
+        st.dataframe(anomaly,use_container_width=True,hide_index=True)
+
+        st.markdown('<div class="hs-section">Failure-Mode Screening</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        mode_df=pd.DataFrame({"Potential failure mode":list(result["modes"].keys()),"Screening index":list(result["modes"].values())})
+        mode_df["Screening level"]=mode_df["Screening index"].apply(lambda x:"Critical" if x>=70 else "Elevated" if x>=50 else "Watch" if x>=30 else "Normal")
+        st.dataframe(mode_df,use_container_width=True,hide_index=True)
+        st.markdown(f'<div class="hs-card"><div class="hs-card-label">Engineering review status</div><div class="hs-card-title">{result["review"]}</div><p class="hs-card-copy">The screening combines prototype structural indicators with current reservoir loading. It is not a failure probability and does not determine whether a dam will break.</p></div>',unsafe_allow_html=True)
+
+        st.markdown('<div class="hs-section">Assessment Equations</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        st.latex(r"SCI=100(0.12A+0.18C+0.18S+0.15D+0.17M+0.12F+0.08T/0.05)")
+        st.latex(r"L=100(0.65L_h+0.35L_q)")
+        st.latex(r"R=0.65SCI+0.35L")
+        st.latex(r"Z=(x-\mu)/\sigma")
+        st.markdown('<div class="hs-note">These equations define the current transparent prototype screening logic. They are not official KSEB/CWC safety indices. Production calibration must use approved dam-specific criteria, inspection records, instrumentation thresholds and engineering review.</div>',unsafe_allow_html=True)
 
 # ============================================================
 # AUTHORITY HYDRAULIC SIMULATION

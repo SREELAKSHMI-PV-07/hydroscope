@@ -1,7 +1,4 @@
 import math
-import secrets
-import time
-from datetime import datetime
 
 import folium
 import numpy as np
@@ -9,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_folium import st_folium
 
 st.set_page_config(page_title="HYDROSCOPE", page_icon="💧", layout="wide", initial_sidebar_state="collapsed")
@@ -33,11 +31,58 @@ div[data-testid="stMetric"]{background:rgba(7,39,57,.72);border:1px solid rgba(1
 .water-card{background:linear-gradient(180deg,rgba(8,43,63,.72),rgba(3,28,44,.78));border:1px solid rgba(80,205,255,.22);border-radius:20px;padding:18px;position:relative;overflow:hidden}
 .water-card:before{content:"";position:absolute;left:-20%;right:-20%;bottom:-38px;height:95px;background:radial-gradient(ellipse,rgba(0,190,255,.24),transparent 65%);animation:wave 4s ease-in-out infinite alternate}
 .badge{display:inline-block;padding:5px 10px;border-radius:999px;background:rgba(30,190,255,.12);border:1px solid rgba(80,210,255,.22);font-size:12px;color:#bdeeff}
-.ripple{border:1px solid rgba(75,215,255,.28);border-radius:50%;height:80px;width:80px;animation:ripple 2.2s infinite;margin:auto;box-shadow:0 0 0 12px rgba(40,190,255,.04),0 0 0 25px rgba(40,190,255,.025)}
-@keyframes ripple{0%{transform:scale(.75);opacity:.25}50%{transform:scale(1);opacity:.9}100%{transform:scale(1.25);opacity:.1}}
 .footer{text-align:center;color:#7096aa;font-size:12px;padding-top:24px}
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================================
+# CURSOR WATER RIPPLE — follows the mouse/touch position only
+# ============================================================
+components.html("""
+<script>
+(function(){
+  try {
+    const parentDoc = window.parent.document;
+    if (parentDoc.getElementById("hydroscope-ripple-layer")) return;
+
+    const layer = parentDoc.createElement("div");
+    layer.id = "hydroscope-ripple-layer";
+    layer.style.cssText = "position:fixed;inset:0;z-index:999999;pointer-events:none;overflow:hidden;";
+    parentDoc.body.appendChild(layer);
+
+    function ripple(x,y){
+      const r = parentDoc.createElement("span");
+      r.style.cssText = [
+        "position:absolute",
+        "left:"+(x-18)+"px",
+        "top:"+(y-18)+"px",
+        "width:36px",
+        "height:36px",
+        "border:1.5px solid rgba(80,215,255,.65)",
+        "border-radius:50%",
+        "box-shadow:0 0 14px rgba(30,190,255,.18), inset 0 0 8px rgba(80,215,255,.10)",
+        "transform:scale(.35)",
+        "opacity:.9",
+        "transition:transform .85s ease-out, opacity .95s ease-out"
+      ].join(";");
+      layer.appendChild(r);
+      requestAnimationFrame(function(){
+        r.style.transform="scale(2.7)";
+        r.style.opacity="0";
+      });
+      setTimeout(function(){r.remove();},1000);
+    }
+
+    let last=0;
+    parentDoc.addEventListener("pointerdown",function(e){ ripple(e.clientX,e.clientY); });
+    parentDoc.addEventListener("pointermove",function(e){
+      const now=Date.now();
+      if(now-last>170 && e.buttons){ last=now; ripple(e.clientX,e.clientY); }
+    });
+  } catch(e) {}
+})();
+</script>
+""", height=0)
 
 # ============================================================
 # DEMO DAM DATA — replace with authorized feeds in deployment
@@ -173,29 +218,41 @@ def dam_map(location, public=True):
 # AUTHORITY ACCESS — prototype verification
 # ============================================================
 def authority_login():
-    st.subheader("🔐 Authority Verification")
-    st.caption("Prototype access control: Authority ID + verified Gmail + OTP. For deployment, replace this with institutional SSO/OAuth and agency-managed accounts.")
-    if "otp" not in st.session_state:
-        st.session_state.otp=None
-    aid=st.text_input("Authority ID",placeholder="AUTH-001")
-    email=st.text_input("Authority Gmail",placeholder="authority@gmail.com")
-    if st.button("Send Verification Code",key="send_otp"):
-        allowed=st.secrets.get("AUTHORIZED_AUTHORITY_EMAILS","")
-        allowed_list=[x.strip().lower() for x in str(allowed).split(",") if x.strip()]
-        if not aid.strip() or not email.lower().endswith("@gmail.com"):
-            st.error("Enter a valid Authority ID and Gmail address.")
-        elif allowed_list and email.lower() not in allowed_list:
-            st.error("This email is not on the authorized prototype list.")
+    st.subheader("🔐 Authority Dashboard Access")
+    st.write("Enter your registered Authority ID or authorized Gmail and the access key.")
+
+    identifier = st.text_input("Authority ID / Registered Gmail", placeholder="AUTH-001 or authority@gmail.com")
+    access_key = st.text_input("Access Key", type="password", placeholder="Enter access key")
+
+    if st.button("🚪 Enter Authority Dashboard", key="authority_enter", type="primary"):
+        configured_id = str(st.secrets.get("AUTHORITY_ID", "AUTH-001")).strip().lower()
+        configured_key = str(st.secrets.get("AUTHORITY_ACCESS_KEY", "HYDRO2026"))
+        configured_emails = str(st.secrets.get("AUTHORIZED_AUTHORITY_EMAILS", "")).lower()
+        email_list = [x.strip() for x in configured_emails.split(",") if x.strip()]
+
+        ident = identifier.strip().lower()
+        valid_identity = ident == configured_id or ("@" in ident and ident in email_list)
+        # If no authorized-email list is configured, the prototype accepts a Gmail
+        # address so the demo remains easy to access. Production must use SSO/OAuth.
+        if "@" in ident and not email_list:
+            valid_identity = ident.endswith("@gmail.com")
+
+        if not identifier.strip() or not access_key:
+            st.error("Enter the Authority ID/Gmail and access key.")
+        elif valid_identity and access_key == configured_key:
+            st.session_state.authority = True
+            st.session_state.authority_id = identifier.strip()
+            st.session_state.authority_email = identifier.strip().lower() if "@" in ident else "Authority ID verified"
+            st.session_state.page = "Authority Console"
+            st.rerun()
         else:
-            st.session_state.otp=st.secrets.get("AUTHORITY_DEMO_OTP","246810")
-            st.session_state.otp_email=email.lower()
-            st.info("Prototype verification code generated. In deployment this code must be delivered through the approved email/identity service.")
-            st.code(st.session_state.otp)
-    code=st.text_input("Verification code",type="password")
-    if st.button("Verify & Enter Authority Console",key="verify_authority"):
-        if st.session_state.get("otp") and code==str(st.session_state.otp):
-            st.session_state.authority=True; st.session_state.authority_id=aid; st.session_state.authority_email=email.lower(); st.rerun()
-        else:st.error("Invalid or missing verification code.")
+            st.error("Access denied. Check the registered identity and access key.")
+
+    with st.expander("🧪 Prototype demo access"):
+        st.write("Authority ID: `AUTH-001`")
+        st.write("Access key: `HYDRO2026`")
+        st.caption("For the hackathon prototype. Real deployment should use institutional SSO/OAuth or agency-managed identity verification.")
+
 
 # ============================================================
 # SESSION / HEADER
@@ -223,11 +280,13 @@ if st.session_state.page=="Home":
     st.write("HYDROSCOPE connects weather, reservoir conditions and downstream impact into one public safety platform.")
     a,b,c=st.columns(3)
     with a:
-        st.markdown('<div class="ripple"></div>',unsafe_allow_html=True); st.markdown("### 👥 Public Interface"); st.write("See dam status, rainfall, shutter information and potential downstream release-impact areas.")
+        st.markdown("### 👥 Public Interface"); st.write("See dam status, rainfall, shutter information and potential downstream release-impact areas.")
     with b:
-        st.markdown('<div class="ripple"></div>',unsafe_allow_html=True); st.markdown("### 🔐 Authority Interface"); st.write("Verified users can access technical hydraulic scenarios, flood depth, velocity and arrival-time analysis.")
+        st.markdown("### 🔐 Authority Interface"); st.write("Authorized users can access technical hydraulic scenarios, flood depth, velocity and arrival-time analysis.")
+        if st.button("🔐 Open Authority Dashboard", key="home_authority"):
+            st.session_state.page="Authority Access"; st.rerun()
     with c:
-        st.markdown('<div class="ripple"></div>',unsafe_allow_html=True); st.markdown("### 📡 Data Pipeline"); st.write("OpenWeather is live in the prototype. Dam values are currently simulated and marked as prototype data.")
+        st.markdown("### 📡 Data Pipeline"); st.write("OpenWeather is live in the prototype. Dam values are currently simulated and marked as prototype data.")
     st.markdown('</div>',unsafe_allow_html=True)
 
 # ============================================================

@@ -1,4 +1,7 @@
 import math
+import re
+from io import StringIO
+from urllib.parse import quote
 
 import folium
 import numpy as np
@@ -7,6 +10,8 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
 from streamlit_folium import st_folium
 
 st.set_page_config(page_title="HYDROSCOPE", layout="wide", initial_sidebar_state="collapsed")
@@ -407,38 +412,377 @@ KERALA_DAM_REGISTRY={
 # demo reservoirs used by the public live-style dashboard.
 AUTHORITY_DAM_OPTIONS=sorted(KERALA_DAM_REGISTRY.keys())
 
-def authority_dam_record(name):
-    """Return registry metadata plus demo operational fields when available."""
-    meta=KERALA_DAM_REGISTRY[name]
-    base=DAM_DATABASE.get(name)
-    if base:
-        rec=base.copy()
-        rec.update({
-            "district":meta["district"],
-            "operator":meta["operator"],
-            "construction_year":meta["year"],
-            "river":meta["river"],
-        })
-        rec["data_available"]=True
-        return rec
+# ============================================================
+# KSEB / KSDMA DATA INGESTION
+# ============================================================
+# The current prototype uses published reservoir observations rather than
+# inventing operating values whenever a public source is available. Direct
+# KSEB access is attempted first. A public mirror that documents the source
+# bulletin is used as a fallback for the prototype.
+KSEB_STATISTICS_URL="https://dams.kseb.in/?page_id=45"
+KSEB_MIRROR_LIVE_URL="https://raw.githubusercontent.com/amith-vp/Kerala-Dam-Water-Levels/refs/heads/main/live.json"
+KSEB_MIRROR_HISTORY_BASE="https://raw.githubusercontent.com/amith-vp/Kerala-Dam-Water-Levels/refs/heads/main/historic_data/"
+IRRIGATION_MIRROR_LIVE_URL="https://raw.githubusercontent.com/amith-vp/Kerala-Dam-Water-Levels/refs/heads/main/irrigation_live.json"
+
+KSEB_NAME_TO_REGISTRY={
+    "Idukki":"Idukki Dam",
+    "Idamalayar":"Idamalayar Dam",
+    "Anathode":"Anathode Dam",
+    "Banasura Sagar":"Banasura Sagar Dam",
+    "Sholayar":"Sholayar Main Dam",
+    "Mattupetty":"Mattupetty Dam",
+    "Anayirankal":"Anayirankal Dam",
+    "Ponmudi":"Ponmudi Dam",
+    "Kakkayam":"Kuttiyadi HE Project Dam",
+    "Pamba":"Pamba Dam",
+    "Poringalkuthu":"Poringalkuthu Dam",
+    "Kundala":"Kundala Dam",
+    "Kallarkutty":"Kallarkutty Dam",
+    "Erattayar":"Erattayar Dam",
+    "Pambla":"Pambla Dam (Lower Periyar)",
+    "Moozhiyar":"Moozhiyar Dam",
+    "Kallar":"Kallar Dam",
+    "Chenkulam":"Sengulam Dam",
+}
+
+KSEB_OFFICIAL_TO_REGISTRY={
+    "IDUKKI":"Idukki Dam",
+    "IDAMALAYAR":"Idamalayar Dam",
+    "KAKKI – ANATHODE":"Anathode Dam",
+    "BANASURASAGAR (K A S)":"Banasura Sagar Dam",
+    "SHOLAYAR":"Sholayar Main Dam",
+    "MADUPETTY":"Mattupetty Dam",
+    "ANAYIRANKAL":"Anayirankal Dam",
+    "PONMUDI":"Ponmudi Dam",
+    "KUTTIYADI (KAKKAYAM)":"Kuttiyadi HE Project Dam",
+    "PAMBA":"Pamba Dam",
+    "PORINGALKUTHU":"Poringalkuthu Dam",
+    "KUNDALA":"Kundala Dam",
+    "KALLARKUTTY":"Kallarkutty Dam",
+    "ERATTAYAR":"Erattayar Dam",
+    "LOWER PERIYAR":"Pambla Dam (Lower Periyar)",
+    "MOOZHIYAR":"Moozhiyar Dam",
+    "KALLAR":"Kallar Dam",
+    "SENGULAM":"Sengulam Dam",
+}
+
+IRRIGATION_NAME_TO_REGISTRY={
+    "Bhoothathankettu (Barrage)":"Bhoothathankettu Dam",
+    "Chimoni":"Chimmini Dam",
+    "Chulliyar":"Chulliyar Dam",
+    "Kallada":"Kallada Dam (Parappar)",
+    "Kanjirappuzha":"Kanjirappuzha Dam",
+    "Karapuzha":"Karapuzha Dam",
+    "Kuttiyadi":"Kuttiyadi Irrigation Project Dam",
+    "Malampuzha":"Malampuzha Dam",
+    "Malankara":"Malankara Dam",
+    "Mangalam":"Mangalam Dam",
+    "Maniyar (Barrage)":"Maniyar Dam",
+    "Meenkara":"Meenkara Dam",
+    "Neyyar":"Neyyar Dam",
+    "Pazhassi (Barrage)":"Pazhassi Dam",
+    "Peechi":"Peechi Dam",
+    "Pothundy":"Pothundy Dam",
+    "Siruvani (Inter state waters)":"Siruvani Dam",
+    "Vazhani":"Vazhani Dam",
+    "Walayar":"Walayar Dam",
+}
+
+def _norm_name(value):
+    return re.sub(r"[^a-z0-9]+","",str(value).lower())
+
+def _number(value):
+    if value is None:
+        return float("nan")
+    text=str(value).strip().replace("—","-").replace("–","-")
+    if not text or text in {"-","--","nan","None"}:
+        return float("nan")
+    m=re.search(r"-?\d+(?:\.\d+)?",text.replace(",",""))
+    return float(m.group()) if m else float("nan")
+
+def _level_m(value, force_feet=False):
+    if value is None:
+        return float("nan")
+    text=str(value).strip().lower()
+    num=_number(text)
+    if not np.isfinite(num):
+        return float("nan")
+    if "ft" in text or force_feet:
+        return num*0.3048
+    return num
+
+def _mcm_day_to_cumecs(value):
+    num=_number(value)
+    if not np.isfinite(num):
+        return float("nan")
+    return num*1_000_000/86400.0
+
+def _risk_from_alerts(water, blue, orange, red):
+    vals=[_level_m(water),_level_m(blue),_level_m(orange),_level_m(red)]
+    w,b,o,r=vals
+    if np.isfinite(r) and np.isfinite(w) and w>=r:
+        return "High"
+    if np.isfinite(o) and np.isfinite(w) and w>=o:
+        return "Moderate"
+    if np.isfinite(b) and np.isfinite(w) and w>=b:
+        return "Watch"
+    return "Normal"
+
+def _clean_current_record(raw, registry_name, source_type, source_url):
+    official=str(raw.get("officialName",raw.get("name",registry_name)))
+    is_ft=_norm_name(official) in {_norm_name("IDUKKI"),_norm_name("SHOLAYAR")}
+    data=raw.get("data") or []
+    row=data[0] if data else {}
+    frl=_level_m(raw.get("FRL"),force_feet=is_ft)
+    water=_level_m(row.get("waterLevel"),force_feet=is_ft)
+    blue=_level_m(raw.get("blueLevel"),force_feet=is_ft)
+    orange=_level_m(raw.get("orangeLevel"),force_feet=is_ft)
+    red=_level_m(raw.get("redLevel"),force_feet=is_ft)
+    avg_inflow=_number(row.get("averageInflow"))
+    if not np.isfinite(avg_inflow):
+        avg_inflow=_mcm_day_to_cumecs(row.get("inflow"))
+    total_outflow=_mcm_day_to_cumecs(row.get("totalOutflow"))
+    spill_release=_number(row.get("spillwayRelease"))
+    if not np.isfinite(total_outflow) and np.isfinite(spill_release):
+        total_outflow=spill_release
+    rainfall=_number(row.get("rainfall"))
+    storage_pct=_number(row.get("storagePercentage"))
+    live_storage=_number(row.get("liveStorage"))
     return {
-        "district":meta["district"],
-        "operator":meta["operator"],
-        "construction_year":meta["year"],
-        "river":meta["river"],
-        "lat":meta["lat"],
-        "lon":meta["lon"],
-        "water_level":float("nan"),
-        "inflow":float("nan"),
-        "outflow":float("nan"),
-        "rainfall":float("nan"),
-        "total_shutters":0,
-        "open_shutters":0,
-        "opening_percent":0,
-        "risk":"Data unavailable",
-        "status":"REGISTRY ONLY",
-        "data_available":False,
+        "name":registry_name,
+        "registry_name":registry_name,
+        "official_name":official,
+        "water_level":water,
+        "frl":frl,
+        "rule_level":_level_m(raw.get("ruleLevel"),force_feet=is_ft),
+        "blue_level":blue,"orange_level":orange,"red_level":red,
+        "live_storage":live_storage,"storage_pct":storage_pct,
+        "inflow":avg_inflow,"outflow":total_outflow,
+        "spillway_release":spill_release,"rainfall":rainfall,
+        "total_shutters":0,"open_shutters":0,"opening_percent":0,
+        "shutter_status":"Not published in source dataset",
+        "risk":_risk_from_alerts(water,blue,orange,red),
+        "status":source_type,
+        "data_available":bool(np.isfinite(water)),
+        "observed_at":row.get("date",raw.get("lastUpdate","")),
+        "data_source":source_type,
+        "source_url":source_url,
+        "level_pct_of_frl":(water/frl*100 if np.isfinite(water) and np.isfinite(frl) and frl>0 else float("nan")),
+        "mirror_name":raw.get("name","")
     }
+
+@st.cache_data(ttl=1800,show_spinner=False)
+def fetch_kseb_published_data():
+    """Fetch the newest KSEB daily table, then fall back to the public mirror."""
+    records={}
+    # Direct KSEB daily page listing.
+    try:
+        r=requests.get(KSEB_STATISTICS_URL,timeout=8)
+        r.raise_for_status()
+        from bs4 import BeautifulSoup
+        soup=BeautifulSoup(r.text,"html.parser")
+        links=[]
+        for a in soup.select(".elementor-post__title a, a"):
+            txt=re.sub(r"\s+"," ",a.get_text(" ",strip=True))
+            href=a.get("href")
+            if href and re.search(r"\d{1,2}\.\d{1,2}\.\d{4}|\d{1,2}/\d{1,2}/\d{4}",txt):
+                links.append((txt,href))
+        if links:
+            date_text, daily_url=links[0]
+            daily=requests.get(daily_url,timeout=8)
+            daily.raise_for_status()
+            tables=pd.read_html(StringIO(daily.text))
+            table=None
+            for t in tables:
+                if t.shape[1]>=18 and any("reservoir" in str(c).lower() or "dam" in str(c).lower() for c in t.columns):
+                    table=t
+                    break
+            if table is None and tables:
+                table=max(tables,key=lambda t:t.shape[1])
+            if table is not None and table.shape[1]>=18:
+                for _,row in table.iloc[:,:19].iterrows():
+                    official=str(row.iloc[1]).strip()
+                    display=KSEB_OFFICIAL_TO_REGISTRY.get(official.upper())
+                    if display is None:
+                        norm=_norm_name(official)
+                        display=next((v for k,v in {**KSEB_NAME_TO_REGISTRY,**KSEB_OFFICIAL_TO_REGISTRY}.items() if _norm_name(k)==norm or _norm_name(v)==norm),None)
+                    if display is None:
+                        continue
+                    raw={
+                        "name":display,"officialName":official,
+                        "FRL":row.iloc[3],"ruleLevel":row.iloc[4],
+                        "blueLevel":row.iloc[6],"orangeLevel":row.iloc[7],"redLevel":row.iloc[8],
+                        "data":[{
+                            "date":date_text,"waterLevel":row.iloc[5],
+                            "liveStorage":row.iloc[9],"storagePercentage":row.iloc[10],
+                            "inflow":row.iloc[11],"averageInflow":row.iloc[12],
+                            "powerHouseDischarge":row.iloc[13],"spillwayRelease":row.iloc[15],
+                            "totalOutflow":row.iloc[16],"rainfall":row.iloc[17]
+                        }]
+                    }
+                    records[display]=_clean_current_record(raw,display,"KSEB PUBLISHED","KSEB: "+daily_url)
+    except Exception:
+        records={}
+
+    # Public mirror fallback / supplementary records.
+    try:
+        mr=requests.get(KSEB_MIRROR_LIVE_URL,timeout=8)
+        mr.raise_for_status()
+        payload=mr.json()
+        for raw in payload.get("dams",[]):
+            display=KSEB_NAME_TO_REGISTRY.get(raw.get("name"))
+            if not display:
+                official_norm=_norm_name(raw.get("officialName",raw.get("name","")))
+                display=next((v for k,v in KSEB_NAME_TO_REGISTRY.items() if _norm_name(k)==official_norm),None)
+            if display and display not in records:
+                records[display]=_clean_current_record(raw,display,"KSEB PUBLISHED (MIRROR FALLBACK)",raw.get("sourceUrl",KSEB_MIRROR_LIVE_URL))
+    except Exception:
+        pass
+    return records
+
+@st.cache_data(ttl=1800,show_spinner=False)
+def fetch_irrigation_published_data():
+    records={}
+    try:
+        r=requests.get(IRRIGATION_MIRROR_LIVE_URL,timeout=8)
+        r.raise_for_status()
+        payload=r.json()
+        for raw in payload.get("dams",[]):
+            display=IRRIGATION_NAME_TO_REGISTRY.get(raw.get("name"))
+            if display:
+                records[display]=_clean_current_record(raw,display,"IRRIGATION PUBLISHED (MIRROR)",payload.get("sourceUrl",IRRIGATION_MIRROR_LIVE_URL))
+    except Exception:
+        pass
+    return records
+
+def _published_record(name):
+    rec=fetch_kseb_published_data().get(name)
+    if rec:
+        return rec
+    return fetch_irrigation_published_data().get(name)
+
+def _demo_record(name,meta):
+    base=DAM_DATABASE.get(name)
+    if not base:
+        return None
+    rec=base.copy()
+    rec.update({"district":meta["district"],"operator":meta["operator"],"construction_year":meta["year"],"river":meta["river"],"data_available":True,"data_source":"LEGACY PROTOTYPE DATA","observed_at":"Prototype","level_pct_of_frl":float("nan")})
+    return rec
+
+def authority_dam_record(name):
+    """Return registry metadata plus published operational data when available."""
+    meta=KERALA_DAM_REGISTRY[name]
+    published=_published_record(name)
+    demo=_demo_record(name,meta)
+    if published:
+        rec=published.copy()
+        rec.update({"district":meta["district"],"operator":meta["operator"],"construction_year":meta["year"],"river":meta["river"],"lat":meta["lat"],"lon":meta["lon"]})
+        return rec
+    if demo:
+        demo.update({"lat":meta["lat"],"lon":meta["lon"]})
+        return demo
+    return {
+        "name":name,"district":meta["district"],"operator":meta["operator"],
+        "construction_year":meta["year"],"river":meta["river"],
+        "lat":meta["lat"],"lon":meta["lon"],
+        "water_level":float("nan"),"frl":float("nan"),"rule_level":float("nan"),
+        "blue_level":float("nan"),"orange_level":float("nan"),"red_level":float("nan"),
+        "live_storage":float("nan"),"storage_pct":float("nan"),
+        "inflow":float("nan"),"outflow":float("nan"),"spillway_release":float("nan"),
+        "rainfall":float("nan"),"total_shutters":0,"open_shutters":0,"opening_percent":0,
+        "shutter_status":"Not published", "risk":"Data unavailable",
+        "status":"REGISTRY ONLY","data_available":False,"data_source":"REGISTRY ONLY",
+        "observed_at":"","source_url":"","level_pct_of_frl":float("nan")
+    }
+
+# ============================================================
+# ML MODEL — historical KSEB reservoir level prediction
+# ============================================================
+def _history_filename(mirror_name):
+    safe=re.sub(r"[\\/]","-",str(mirror_name)).replace(" ","_")
+    return quote(safe+".json",safe="._-()")
+
+@st.cache_data(ttl=21600,show_spinner=False)
+def fetch_kseb_history(mirror_name):
+    """Load the auto-collected historical KSEB series for one reservoir."""
+    if not mirror_name:
+        return pd.DataFrame()
+    url=KSEB_MIRROR_HISTORY_BASE+_history_filename(mirror_name)
+    try:
+        r=requests.get(url,timeout=10)
+        r.raise_for_status()
+        payload=r.json()
+        rows=[]
+        for item in payload.get("data",[]):
+            rows.append({
+                "date":pd.to_datetime(item.get("date"),dayfirst=True,errors="coerce"),
+                "water_level":_number(item.get("waterLevel")),
+                "storage_pct":_number(item.get("storagePercentage")),
+                "inflow":_mcm_day_to_cumecs(item.get("inflow")),
+                "outflow":_mcm_day_to_cumecs(item.get("totalOutflow")),
+                "rainfall":_number(item.get("rainfall"))
+            })
+        df=pd.DataFrame(rows).dropna(subset=["date","water_level"]).sort_values("date")
+        return df.drop_duplicates("date",keep="last").reset_index(drop=True)
+    except Exception:
+        return pd.DataFrame()
+
+@st.cache_resource(ttl=21600,show_spinner=False)
+def train_kseb_rf(name,mirror_name):
+    history=fetch_kseb_history(mirror_name)
+    if history.empty or len(history)<35:
+        return {"available":False,"reason":f"Only {len(history)} historical observations available; at least 35 are required for the prototype model." if len(history) else "Historical series unavailable."}
+    df=history.copy()
+    df["next_rainfall"]=df["rainfall"].shift(-1)
+    doy=df["date"].dt.dayofyear
+    df["month_sin"]=np.sin(2*np.pi*doy/365.25)
+    df["month_cos"]=np.cos(2*np.pi*doy/365.25)
+    df["target_next_level"]=df["water_level"].shift(-1)
+    df=df.dropna(subset=["target_next_level","water_level","storage_pct","inflow","outflow","rainfall","next_rainfall"])
+    if len(df)<35:
+        return {"available":False,"reason":f"Only {len(df)} usable historical observations remain after cleaning."}
+    features=["water_level","storage_pct","inflow","outflow","rainfall","next_rainfall","month_sin","month_cos"]
+    split=max(25,int(len(df)*0.80))
+    if split>=len(df): split=len(df)-8
+    train=df.iloc[:split]
+    test=df.iloc[split:]
+    model=RandomForestRegressor(n_estimators=250,max_depth=12,min_samples_leaf=2,random_state=42,n_jobs=-1)
+    model.fit(train[features],train["target_next_level"])
+    pred=model.predict(test[features])
+    mae=float(mean_absolute_error(test["target_next_level"],pred))
+    r2=float(r2_score(test["target_next_level"],pred)) if len(test)>=2 else float("nan")
+    return {"available":True,"model":model,"features":features,"mae":mae,"r2":r2,"train_rows":len(train),"test_rows":len(test),"history_rows":len(history),"history":history,"name":name}
+
+def ml_next_level(name,dam,next_rain_mm):
+    mirror=dam.get("mirror_name","")
+    result=train_kseb_rf(name,mirror)
+    if not result.get("available"):
+        return result
+    history=result["history"]
+    latest=history.iloc[-1].copy()
+    doy=pd.Timestamp.now().dayofyear
+    def _feature_value(current, fallback):
+        try:
+            current=float(current)
+            if np.isfinite(current):
+                return current
+        except (TypeError,ValueError):
+            pass
+        return float(fallback) if np.isfinite(float(fallback)) else 0.0
+
+    row=pd.DataFrame([{
+        "water_level":_feature_value(dam.get("water_level"),latest["water_level"]),
+        "storage_pct":_feature_value(dam.get("storage_pct"),latest["storage_pct"]),
+        "inflow":_feature_value(dam.get("inflow"),latest["inflow"]),
+        "outflow":_feature_value(dam.get("outflow"),latest["outflow"]),
+        "rainfall":_feature_value(dam.get("rainfall"),latest["rainfall"]),
+        "next_rainfall":_feature_value(next_rain_mm,latest["rainfall"]),
+        "month_sin":math.sin(2*math.pi*doy/365.25),
+        "month_cos":math.cos(2*math.pi*doy/365.25),
+    }])
+    pred=float(result["model"].predict(row[result["features"]])[0])
+    return {**result,"prediction":round(pred,2),"forecast_rainfall":round(float(next_rain_mm),1)}
+
 
 
 
@@ -456,20 +800,21 @@ def render_dam_profile(name, dam=None, mode="Authority"):
     a.metric("Dam",name)
     b.metric("District",meta["district"])
     c.metric("Operator",meta["operator"])
-    d.metric("Data status","PROTOTYPE" if dam.get("data_available") else "REGISTRY ONLY")
+    d.metric("Data status",dam.get("status","REGISTRY ONLY"))
     a,b,c,d=st.columns(4)
     a.metric("River / system",meta["river"])
     b.metric("Completion year",str(meta["year"]))
     c.metric("Latitude",f"{meta['lat']:.4f}")
     d.metric("Longitude",f"{meta['lon']:.4f}")
     if dam.get("data_available"):
+        level=dam.get("water_level",float("nan")); storage=dam.get("storage_pct",float("nan")); inflow=dam.get("inflow",float("nan")); outflow=dam.get("outflow",float("nan"))
         st.caption(
-            f"Current prototype operating values: water level {dam['water_level']:.1f} m  ·  "
-            f"inflow {dam['inflow']:.0f} m³/s  ·  outflow {dam['outflow']:.0f} m³/s  ·  "
-            f"rainfall {dam['rainfall']:.0f} mm  ·  shutters {dam['open_shutters']}/{dam['total_shutters']}"
+            f"Published observation: {dam.get('observed_at','')}  ·  Source: {dam.get('data_source','')}"
         )
+        if dam.get("source_url"):
+            st.caption(f"Source record: {dam['source_url']}")
     else:
-        st.caption("Verified operational telemetry is not connected for this dam in the current prototype. Registry information remains available.")
+        st.caption("No published operational observation is connected for this dam in the current prototype. Registry information remains available.")
 
 # Major Kerala locations: district headquarters plus major cities/towns used as public search points.
 # Coordinates are representative map points; they are not intended as precise user geolocation.
@@ -614,7 +959,7 @@ def nearby_dams(location,radius=120):
     for name,meta in KERALA_DAM_REGISTRY.items():
         dist=distance_km(lat,lon,meta["lat"],meta["lon"])
         if dist<=radius:
-            d=DAM_DATABASE.get(name,{})
+            d=_published_record(name) or _demo_record(name,meta) or {}
             x={
                 "name":name,
                 "district":meta["district"],
@@ -624,15 +969,29 @@ def nearby_dams(location,radius=120):
                 "lat":meta["lat"],
                 "lon":meta["lon"],
                 "water_level":d.get("water_level",float("nan")),
+                "frl":d.get("frl",float("nan")),
+                "rule_level":d.get("rule_level",float("nan")),
+                "blue_level":d.get("blue_level",float("nan")),
+                "orange_level":d.get("orange_level",float("nan")),
+                "red_level":d.get("red_level",float("nan")),
+                "live_storage":d.get("live_storage",float("nan")),
+                "storage_pct":d.get("storage_pct",float("nan")),
+                "level_pct_of_frl":d.get("level_pct_of_frl",float("nan")),
                 "inflow":d.get("inflow",float("nan")),
                 "outflow":d.get("outflow",float("nan")),
+                "spillway_release":d.get("spillway_release",float("nan")),
                 "rainfall":d.get("rainfall",float("nan")),
                 "total_shutters":d.get("total_shutters",0),
                 "open_shutters":d.get("open_shutters",0),
                 "opening_percent":d.get("opening_percent",0),
+                "shutter_status":d.get("shutter_status","Not published in source dataset"),
                 "risk":d.get("risk","Data unavailable"),
                 "status":d.get("status","REGISTRY ONLY"),
-                "data_available":bool(d),
+                "data_available":bool(d.get("data_available",False)),
+                "observed_at":d.get("observed_at",""),
+                "data_source":d.get("data_source",""),
+                "source_url":d.get("source_url",""),
+                "mirror_name":d.get("mirror_name", ""),
                 "distance":dist,
             }
             out.append(x)
@@ -646,8 +1005,12 @@ def location_options(district="All districts", search=""):
     return names
 
 def risk_score(d):
-    level=min(100,d["water_level"]); flow=min(100,d["inflow"]/20); opening=min(100,d["opening_percent"]*2)
-    return int(min(100,round(level*.45+flow*.35+opening*.20)))
+    level_pct=d.get("level_pct_of_frl",float("nan"))
+    if not np.isfinite(level_pct):
+        level_pct=0
+    flow=min(100,max(0,d.get("inflow",0)/20))
+    opening=min(100,d.get("opening_percent",0)*2)
+    return int(min(100,round(min(100,level_pct)*.45+flow*.35+opening*.20)))
 
 def water_level_gauge(level):
     pct=max(0,min(100,level))
@@ -696,7 +1059,11 @@ def predict_level(d,rain24):
     return round(d["water_level"]+(net/1000)*.75+(rain24/100)*2.5,2)
 
 def release_probability(d,pred):
-    score=d["water_level"]*.35+min(100,pred)*.35+min(100,d["inflow"]/20)*.30
+    frl=d.get("frl",float("nan"))
+    current_ratio=(d.get("water_level",0)/frl) if np.isfinite(frl) and frl>0 else 0
+    pred_ratio=(pred/frl) if np.isfinite(frl) and frl>0 else 0
+    inflow=min(1,max(0,d.get("inflow",0)/50))
+    score=100*(0.35*min(1,current_ratio)+0.35*min(1,pred_ratio)+0.30*inflow)
     return min(99,round(score))
 
 def release_outlook(d):
@@ -723,14 +1090,15 @@ def release_outlook(d):
     level24=predict_level(d,r24)
     level48=d["water_level"]+(max(0,d["inflow"]-d["outflow"])/1000)*1.5+(r48/100)*4.0
 
-    current_release=d["open_shutters"]>0 or d["outflow"]>0
+    spillway=float(d.get("spillway_release",0) if np.isfinite(d.get("spillway_release",float("nan"))) else 0)
+    current_release=spillway>0
     heavy24=r24>=50
     heavy48=r48>=80
     elevated=d["risk"] in {"Moderate","High"}
 
-    if d["open_shutters"]>0:
-        outlook="Release currently active"
-        detail="The prototype data already shows an open shutter state. Continued or adjusted release depends on official reservoir operations."
+    if current_release:
+        outlook="Spillway release currently reported"
+        detail="The published reservoir record reports a non-zero spillway release. Continued or adjusted release depends on authorised reservoir operations."
         flag="ACTIVE"
     elif (heavy24 and elevated) or (heavy48 and elevated):
         outlook="Potential controlled release"
@@ -862,7 +1230,11 @@ def public_release_assessment(d, scenario_shutters):
 
 def interactive_dam_visual(dam):
     has_data=bool(dam.get("data_available",True)) and not pd.isna(dam.get("water_level",float("nan")))
-    pct=max(8,min(94,float(dam["water_level"]))) if has_data else 35
+    raw_pct=dam.get("level_pct_of_frl",float("nan"))
+    if not np.isfinite(raw_pct):
+        raw_level=dam.get("water_level",float("nan"))
+        raw_pct=35.0 if not np.isfinite(raw_level) else min(94.0,max(8.0,float(raw_level)))
+    pct=max(8,min(94,float(raw_pct))) if has_data else 35
     gates=[]
     total=int(dam.get("total_shutters",4)) if has_data else 4
     opened=int(dam.get("open_shutters",0)) if has_data else 0
@@ -870,7 +1242,7 @@ def interactive_dam_visual(dam):
         gates.append('<span class="hs-gate open"></span>' if i < opened else '<span class="hs-gate"></span>')
     name=dam.get("name","Idukki Dam")
     level_text=f'{float(dam["water_level"]):.1f} m' if has_data else 'Telemetry unavailable'
-    level_sub='current prototype level' if has_data else 'registry reference only'
+    level_sub='published reservoir level' if has_data else 'registry reference only'
     return f"""<div class="hs-dam-scene">
       <div class="hs-dam-sky"></div><div class="hs-moon"></div>
       <div class="hs-mountain m1"></div><div class="hs-mountain m2"></div>
@@ -937,7 +1309,7 @@ def dam_map(location):
     # Plot the complete registered Kerala dam set, not only the demo telemetry subset.
     for name,meta in KERALA_DAM_REGISTRY.items():
         dist=distance_km(lat,lon,meta["lat"],meta["lon"])
-        d=DAM_DATABASE.get(name,{})
+        d=_published_record(name) or _demo_record(name,meta) or {}
         risk=d.get("risk","Data unavailable")
         c="red" if risk=="High" else "orange" if risk=="Moderate" else "green" if risk=="Normal" else "blue"
         if d:
@@ -1014,7 +1386,9 @@ st.divider()
 # HOME
 # ============================================================
 if st.session_state.page=="Home":
-    home_dam=DAM_DATABASE["Idukki Dam"]
+    home_dam=authority_dam_record("Idukki Dam")
+    if not home_dam.get("data_available"):
+        home_dam=DAM_DATABASE["Idukki Dam"]
     st.markdown("""<div class="hs-hero">
       <div class="hs-hero-orbit"></div>
       <div class="hs-hero-copywrap">
@@ -1032,21 +1406,21 @@ if st.session_state.page=="Home":
         level_pct=min(100,max(5,home_dam["water_level"]))
         rain_pct=min(100,max(5,home_dam["rainfall"]))
         st.markdown(f"""<div class="hs-command-panel" style="height:100%;box-sizing:border-box;">
-          <div class="hs-command-label">Current prototype state</div>
+          <div class="hs-command-label">Current reservoir state</div>
           <div class="hs-command-value">{home_dam["water_level"]:.1f} m</div>
           <div class="hs-command-copy">Reservoir level · {home_dam["risk"]} condition</div>
           <div class="hs-signal"><span style="width:{level_pct:.0f}%"></span></div>
           <div style="height:18px"></div>
           <div class="hs-command-label">Rainfall input</div>
           <div class="hs-command-value">{home_dam["rainfall"]:.0f} mm</div>
-          <div class="hs-command-copy">Prototype catchment input · current shutters {home_dam["open_shutters"]}/{home_dam["total_shutters"]}</div>
+          <div class="hs-command-copy">Published rainfall input · source status {home_dam.get("status","Prototype")}</div>
           <div class="hs-signal"><span style="width:{rain_pct:.0f}%"></span></div>
         </div>""",unsafe_allow_html=True)
     st.write("")
     a,b,c,d=st.columns(4)
     a.metric("Water level",f'{home_dam["water_level"]:.1f} m')
     b.metric("Rainfall input",f'{home_dam["rainfall"]:.0f} mm')
-    c.metric("Open shutters",f'{home_dam["open_shutters"]}/{home_dam["total_shutters"]}')
+    c.metric("Storage",f'{home_dam.get("storage_pct",0):.1f}%')
     d.metric("Risk state",home_dam["risk"])
     st.write("")
     a,b,c=st.columns(3)
@@ -1127,8 +1501,9 @@ elif st.session_state.page=="Public Dashboard":
                 active=st.session_state.get("public_dam_focus")==d["name"]
                 border='border:1px solid rgba(58,210,255,.85);box-shadow:0 0 24px rgba(35,185,255,.18);' if active else ''
                 if d.get("data_available"):
-                    card_copy=(f'Water level <b>{d["water_level"]:.1f} m</b>  |  Shutters <b>{d["open_shutters"]}/{d["total_shutters"]}</b><br>'
-                               f'Rainfall input <b>{d["rainfall"]:.0f} mm</b>')
+                    gate_text=(f'Spillway release <b>{d["spillway_release"]:.2f} m³/s</b>' if np.isfinite(d.get("spillway_release",float("nan"))) else 'Gate status <b>Not published</b>')
+                    card_copy=(f'Water level <b>{d["water_level"]:.1f} m</b>  |  Storage <b>{d.get("storage_pct",float("nan")):.1f}%</b><br>'
+                               f'{gate_text}  |  Rainfall <b>{d.get("rainfall",float("nan")):.1f} mm</b>')
                 else:
                     card_copy=(f'River <b>{d["river"]}</b>  |  Operator <b>{d["operator"]}</b><br>'
                                f'Operational telemetry <b>Registry only</b>')
@@ -1155,7 +1530,8 @@ elif st.session_state.page=="Public Dashboard":
                 zones=DOWNSTREAM_ZONES.get(focus["name"],["Downstream river corridor","Nearby low-lying areas"])
                 st.markdown('<div class="hs-card"><div class="hs-card-label">Potential downstream awareness</div><div class="hs-card-title">Areas to examine in a hypothetical scenario</div><p class="hs-card-copy">' + " • ".join(zones) + '</p></div>',unsafe_allow_html=True)
             else:
-                st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Public inspection</div><div class="hs-big">{focus["name"]}</div><div class="hs-click">Current level {focus["water_level"]:.1f}  |  Current shutters {focus["open_shutters"]}/{focus["total_shutters"]}  |  Distance {focus["distance"]:.1f} km</div></div>',unsafe_allow_html=True)
+                gate_line=(f'Spillway release {focus.get("spillway_release",0):.2f} m³/s' if np.isfinite(focus.get("spillway_release",float("nan"))) else 'Gate status not published')
+                st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Public inspection</div><div class="hs-big">{focus["name"]}</div><div class="hs-click">Current level {focus["water_level"]:.1f} m  |  Storage {focus.get("storage_pct",0):.1f}%  |  {gate_line}  |  Distance {focus["distance"]:.1f} km</div></div>',unsafe_allow_html=True)
 
                 outlook=release_outlook(focus)
                 if outlook["success"]:
@@ -1193,7 +1569,7 @@ elif st.session_state.page=="Public Dashboard":
 
     st.markdown('<div class="hs-section">Kerala Monitoring Map</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     st_folium(dam_map(loc),height=560,width=None,returned_objects=[])
-    st.markdown('<div class="hs-note">HYDROSCOPE provides public awareness and safety information. Official warnings and evacuation instructions remain the responsibility of authorized agencies. Demo dam parameters are prototype data.</div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-note">HYDROSCOPE provides public awareness and safety information. Official warnings and evacuation instructions remain the responsibility of authorized agencies. Reservoir values are shown from published source records when available; otherwise they are clearly marked as prototype/registry data.</div>',unsafe_allow_html=True)
 
 # ============================================================
 # HYDRO GUARDIAN
@@ -1241,12 +1617,29 @@ elif st.session_state.page=="Prediction":
         fig=go.Figure(go.Bar(x=f["data"]["datetime"],y=f["data"]["rainfall"]))
         fig.update_layout(template="plotly_dark",height=350,title="Forecast Rainfall",xaxis_title="Time",yaxis_title="mm / 3h")
         st.plotly_chart(fig,use_container_width=True)
-        pred=predict_level(dam,s["rain_24h"]); prob=release_probability(dam,pred)
-        a,b,c=st.columns(3)
-        a.metric("Current level",dam["water_level"])
-        b.metric("Predicted level",pred)
-        c.metric("Release-risk indicator",f"{prob}%")
-        st.markdown('<div class="hs-note">Prototype mathematical calculation; not an operational release decision.</div>',unsafe_allow_html=True)
+
+        st.markdown('<div class="hs-section">ML Water-Level Forecast</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        ml=ml_next_level(name,dam,s["rain_24h"])
+        if ml.get("available"):
+            a,b,c,d4=st.columns(4)
+            a.metric("Current level",f"{dam['water_level']:.2f} m")
+            b.metric("RF predicted next-day level",f"{ml['prediction']:.2f} m")
+            c.metric("Validation MAE",f"{ml['mae']:.2f} m")
+            d4.metric("Training records",f"{ml['history_rows']:,}")
+            st.caption(f"Random Forest Regression trained on historical KSEB-derived daily observations for {name}. Time-ordered validation: R² = {ml['r2']:.3f} · Test records = {ml['test_rows']:,}.")
+            if np.isfinite(ml.get("r2",float("nan"))):
+                st.info("The ML forecast is a prototype research prediction, not an operational release instruction. Model performance can vary by reservoir and season.")
+        else:
+            pred=predict_level(dam,s["rain_24h"])
+            a,b,c=st.columns(3)
+            a.metric("Current level",f"{dam['water_level']:.2f} m")
+            b.metric("Fallback mathematical forecast",f"{pred:.2f} m")
+            c.metric("ML status","Unavailable")
+            st.warning("Historical KSEB observations are not sufficient for a per-dam Random Forest model yet; the transparent mathematical forecast is retained as fallback.")
+
+        prob=release_probability(dam,ml.get("prediction",predict_level(dam,s["rain_24h"])))
+        st.metric("Release-risk indicator",f"{prob}%")
+        st.markdown('<div class="hs-note">KSEB-published observations are used as reservoir inputs when available. The Random Forest model learns next-day water-level behaviour from historical observations; it does not determine gate operations or official warnings.</div>',unsafe_allow_html=True)
 # ============================================================
 # AUTHORITY LOGIN
 # ============================================================
@@ -1277,14 +1670,14 @@ elif st.session_state.page=="Authority Console":
     else:
         render_dam_profile(name,dam)
         a,b,c,e=st.columns(4)
-        a.metric("Water level",dam["water_level"])
-        b.metric("Inflow",f"{dam['inflow']:.0f} m³/s")
-        c.metric("Outflow",f"{dam['outflow']:.0f} m³/s")
-        e.metric("Open shutters",f"{dam['open_shutters']}/{dam['total_shutters']}")
-        st.markdown('<div class="hs-section">Technical risk factors</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        factors=pd.DataFrame({"Factor":["Reservoir level","Inflow","Rainfall","Shutter opening","Net flow"],"Value":[dam["water_level"],dam["inflow"],dam["rainfall"],dam["opening_percent"],max(0,dam["inflow"]-dam["outflow"])],"Unit":["m","m³/s","mm","%","m³/s"]})
+        a.metric("Water level",f"{dam['water_level']:.2f} m")
+        a2=dam.get("storage_pct",float("nan")); b.metric("Live storage",f"{a2:.1f}%" if np.isfinite(a2) else "—")
+        c.metric("Average inflow",f"{dam['inflow']:.2f} m³/s" if np.isfinite(dam.get("inflow",float("nan"))) else "—")
+        spill=dam.get("spillway_release",float("nan")); e.metric("Spillway release",f"{spill:.2f} m³/s" if np.isfinite(spill) else "—")
+        st.markdown('<div class="hs-section">Published reservoir parameters</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        factors=pd.DataFrame({"Parameter":["FRL","Rule level","Blue alert","Orange alert","Red alert","Water level","Live storage","Storage %","Average inflow","Total outflow (daily average)","Spillway release","Rainfall"],"Value":[dam.get("frl",float("nan")),dam.get("rule_level",float("nan")),dam.get("blue_level",float("nan")),dam.get("orange_level",float("nan")),dam.get("red_level",float("nan")),dam.get("water_level",float("nan")),dam.get("live_storage",float("nan")),dam.get("storage_pct",float("nan")),dam.get("inflow",float("nan")),dam.get("outflow",float("nan")),dam.get("spillway_release",float("nan")),dam.get("rainfall",float("nan"))],"Unit":["m","m","m","m","m","m","MCM","%","m³/s","m³/s","m³/s","mm"]})
         st.dataframe(factors,use_container_width=True,hide_index=True)
-        st.markdown('<div class="hs-note">Open the Hydraulic Simulation page for the detailed 2-D scenario model.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-note">Published reservoir observations are source data. The ML forecast and hydraulic simulation are analytical layers; neither autonomously controls gates nor issues official warnings.</div>',unsafe_allow_html=True)
 
 # ============================================================
 # AUTHORITY STRUCTURAL SAFETY
@@ -1296,12 +1689,7 @@ elif st.session_state.page=="Structural Safety":
     st.markdown('<div class="hs-note"><b>Authority-only engineering screening.</b> This module combines structural-condition indicators, historical trends and current hydraulic loading. The current structural dataset is explicitly marked PROTOTYPE because HYDROSCOPE is not yet connected to authorised inspection/instrumentation feeds. It must not be interpreted as a certified dam-safety assessment or a prediction that a dam will fail.</div>',unsafe_allow_html=True)
     name=st.selectbox("Select Dam",list(KERALA_DAM_REGISTRY),key="struct_dam")
     meta=KERALA_DAM_REGISTRY[name]
-    dam=DAM_DATABASE.get(name,{
-        "district":meta["district"],"lat":meta["lat"],"lon":meta["lon"],
-        "water_level":float("nan"),"inflow":float("nan"),"outflow":float("nan"),
-        "rainfall":float("nan"),"total_shutters":0,"open_shutters":0,"opening_percent":0,
-        "risk":"Data unavailable","status":"REGISTRY ONLY"
-    })
+    dam=authority_dam_record(name)
     result=structural_assessment(name,dam)
     if result.get("status")=="DATA UNAVAILABLE":
         st.info("This dam is included in the Kerala authority registry, but verified structural-health/instrumentation data are not connected to the prototype yet. Registry and downstream-impact information are still available.")

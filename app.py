@@ -1071,12 +1071,20 @@ elif st.session_state.page=="Structural Safety":
         st.dataframe(mode_df,use_container_width=True,hide_index=True)
         st.markdown(f'<div class="hs-card"><div class="hs-card-label">Engineering review status</div><div class="hs-card-title">{result["review"]}</div><p class="hs-card-copy">The screening combines prototype structural indicators with current reservoir loading. It is not a failure probability and does not determine whether a dam will break.</p></div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="hs-section">Assessment Equations</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-        st.latex(r"SCI=100(0.12A+0.18C+0.18S+0.15D+0.17M+0.12F+0.08T/0.05)")
-        st.latex(r"L=100(0.65L_h+0.35L_q)")
-        st.latex(r"R=0.65SCI+0.35L")
-        st.latex(r"Z=(x-\mu)/\sigma")
-        st.markdown('<div class="hs-note">These equations define the current transparent prototype screening logic. They are not official KSEB/CWC safety indices. Production calibration must use approved dam-specific criteria, inspection records, instrumentation thresholds and engineering review.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-section">Potential Downstream Impact if Dam Breaks</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        zones=DOWNSTREAM_ZONES.get(name,["Downstream river corridor","Nearby low-lying areas"])
+        st.markdown('<div class="hs-note"><b>Scenario view:</b> These are the downstream areas currently configured for this prototype. They indicate locations that should be examined for potential impact in a hypothetical dam-break scenario. They are not an official inundation boundary or evacuation list.</div>',unsafe_allow_html=True)
+        zone_cols=st.columns(2)
+        for i,zone in enumerate(zones):
+            with zone_cols[i%2]:
+                st.markdown(f'<div class="hs-card" style="min-height:110px;margin-bottom:14px"><div class="hs-card-label">Potential impact area {i+1}</div><div class="hs-card-title">{zone}</div><p class="hs-card-copy">Review for possible flood exposure in the hydraulic scenario and approved Emergency Action Plan.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-section">Impact Assessment</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        impact=pd.DataFrame({
+            "Assessment item":["Downstream settlements / corridors","Low-lying river-side areas","Roads and bridges","Critical infrastructure","Evacuation / warning zones"],
+            "Current prototype status":["Configured monitoring zones", "Configured monitoring zones", "Requires verified GIS / EAP layer", "Requires verified GIS / EAP layer", "Requires official authority-defined EAP data"]
+        })
+        st.dataframe(impact,use_container_width=True,hide_index=True)
+        st.markdown('<div class="hs-note">For operational use, the affected-area layer must come from a calibrated dam-break / inundation model linked to verified terrain, river networks, settlements, roads, bridges, critical infrastructure and the dam\'s approved Emergency Action Plan. The current prototype does not claim to know the exact villages or structures that would be inundated.</div>',unsafe_allow_html=True)
 
 # ============================================================
 # AUTHORITY HYDRAULIC SIMULATION

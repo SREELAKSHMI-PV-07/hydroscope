@@ -551,95 +551,52 @@ def interactive_dam_visual(dam):
     </div>'''
 
 
-def hydro_game_scene(step, water, rainfall, safety):
-    water_pct=max(10,min(92,int(water)))
-    rain_pct=max(12,min(96,int(rainfall/1.7)))
-    safety_pct=max(8,min(96,int(safety)))
-    gates_open=1 if step>=1 else 0
-    if step>=2: gates_open=2
-    gates=[]
-    for i in range(4):
-        gates.append('<span class="hg-gate hg-open"></span>' if i < gates_open else '<span class="hg-gate"></span>')
-    houses=''.join('<span class="hg-house"></span>' for _ in range(5))
-    return f'''<div class="hg-world">
-      <div class="hg-cloud hg-c1"></div><div class="hg-cloud hg-c2"></div><div class="hg-rain" style="opacity:{0.25+rain_pct/140:.2f}"></div>
-      <div class="hg-mountain hg-m1"></div><div class="hg-mountain hg-m2"></div>
-      <div class="hg-reservoir"><div class="hg-water" style="height:{water_pct}%"></div><div class="hg-wave"></div></div>
-      <div class="hg-dam"><div class="hg-dam-top"></div><div class="hg-gates">{''.join(gates)}</div></div>
-      <div class="hg-river"><div class="hg-river-flow"></div></div>
-      <div class="hg-valley">{houses}</div>
-      <div class="hg-overlay">
-        <div><span>EVENT</span><strong>{step+1}/3</strong></div>
-        <div><span>RAINFALL</span><strong>{rainfall} mm</strong></div>
-        <div><span>RESERVOIR</span><strong>{water}%</strong></div>
-        <div><span>SAFETY</span><strong>{safety}%</strong></div>
-      </div>
-    </div>'''
-
-
-def hydro_guardian_reset():
-    st.session_state.game_started=True
-    st.session_state.game_over=False
-    st.session_state.game_step=0
-    st.session_state.game_score=0
-    st.session_state.game_safety=55
-    st.session_state.game_water=58
-    st.session_state.game_message="A monsoon cell is approaching the fictional valley. Start monitoring early."
-
-
-def hydro_guardian_choice(choice):
-    step=st.session_state.game_step
-    outcomes=[
-        {"monitor":(8,5,"Good monitoring gives the response team more lead time."),"warning":(12,9,"Early public information improves preparedness."),"evacuate":(4,2,"Evacuation information is useful, but the first step is confirming the evolving situation.")},
-        {"monitor":(10,4,"The reservoir trend is now being watched closely."),"warning":(11,8,"A targeted warning helps downstream communities prepare."),"evacuate":(7,6,"Preparedness action helps, but broad evacuation should follow verified agency guidance.")},
-        {"monitor":(6,3,"Monitoring alone is less effective once downstream risk is rising."),"warning":(13,10,"A clear warning creates valuable response time."),"evacuate":(14,12,"Prompt preparedness can reduce exposure when risk is escalating.")},
-    ]
-    score,safety,msg=outcomes[min(step,2)][choice]
-    st.session_state.game_score=min(100,st.session_state.game_score+score)
-    st.session_state.game_safety=min(100,st.session_state.game_safety+safety)
-    st.session_state.game_water=min(100,st.session_state.game_water+[12,18,22][min(step,2)])
-    st.session_state.game_message=msg
-    st.session_state.game_step+=1
-    if st.session_state.game_step>=3: st.session_state.game_over=True
-
-
-def hydro_game_page():
-    st.markdown('<div class="hs-section">Hydro Guardian</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    st.markdown('<div class="hs-game"><div class="hs-game-title">PROTECT THE VALLEY</div><div class="hs-game-sub">A short educational mini-game inside HYDROSCOPE. Manage information and preparedness as rainfall increases. This fictional simulation does not control or predict any real dam.</div></div>',unsafe_allow_html=True)
-    if "game_started" not in st.session_state: st.session_state.game_started=False
-    if not st.session_state.game_started:
-        st.markdown(hydro_game_scene(0,58,82,55),unsafe_allow_html=True)
-        st.write("")
-        st.markdown('<div class="hs-note">Three events. One fictional valley. Rainfall intensifies, the reservoir rises and downstream conditions change. Choose the safest public-response action at each stage.</div>',unsafe_allow_html=True)
-        if st.button("Start Hydro Guardian",type="primary",key="start_game",use_container_width=True): hydro_guardian_reset(); st.rerun()
-        return
-    if st.session_state.get("game_over"):
-        a,b,c=st.columns(3)
-        a.markdown(f'<div class="hs-game-stat">Safety<strong>{st.session_state.game_safety}%</strong></div>',unsafe_allow_html=True)
-        b.markdown(f'<div class="hs-game-stat">Score<strong>{st.session_state.game_score}</strong></div>',unsafe_allow_html=True)
-        c.markdown('<div class="hs-game-stat">Result<strong>Mission complete</strong></div>',unsafe_allow_html=True)
-        st.write("")
-        st.markdown(f'<div class="hs-game-over"><div class="hs-score">{st.session_state.game_score}</div><div>HYDRO GUARDIAN SCORE</div><p>{st.session_state.game_message}</p><p>Key lesson: early information and preparedness can create more time for communities to respond.</p></div>',unsafe_allow_html=True)
-        if st.button("Play Again",type="primary",key="restart_game"): hydro_guardian_reset(); st.rerun()
-        return
-    step=st.session_state.game_step
-    rainfall=[82,118,151][min(step,2)]
-    level=st.session_state.game_water
-    st.markdown(hydro_game_scene(step,level,rainfall,st.session_state.game_safety),unsafe_allow_html=True)
-    st.write("")
-    a,b,c=st.columns(3)
-    a.markdown(f'<div class="hs-game-stat">Rainfall<strong>{rainfall} mm</strong><div class="hs-game-bar"><span style="width:{min(100,rainfall/1.6)}%"></span></div></div>',unsafe_allow_html=True)
-    b.markdown(f'<div class="hs-game-stat">Reservoir<strong>{level}%</strong><div class="hs-game-bar"><span style="width:{level}%"></span></div></div>',unsafe_allow_html=True)
-    c.markdown(f'<div class="hs-game-stat">Community safety<strong>{st.session_state.game_safety}%</strong><div class="hs-game-bar"><span style="width:{st.session_state.game_safety}%"></span></div></div>',unsafe_allow_html=True)
-    st.write("")
-    st.markdown(f'<div class="hs-card"><div class="hs-card-label">Event {step+1} of 3</div><div class="hs-card-title">Rainfall is intensifying</div><p class="hs-card-copy">{st.session_state.game_message}</p></div>',unsafe_allow_html=True)
-    st.markdown('<div class="hs-section">Choose your response</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    x,y,z=st.columns(3)
-    if x.button("Monitor conditions",key=f"gm_{step}_monitor",use_container_width=True): hydro_guardian_choice("monitor"); st.rerun()
-    if y.button("Issue public warning",key=f"gm_{step}_warning",use_container_width=True): hydro_guardian_choice("warning"); st.rerun()
-    if z.button("Prepare evacuation information",key=f"gm_{step}_evacuate",use_container_width=True): hydro_guardian_choice("evacuate"); st.rerun()
-    st.caption("Game scenarios are fictional and educational. Real warnings and evacuation instructions come from authorized agencies.")
-
+def hydro_run_page():
+    """Playable browser-side boat game for HYDROSCOPE."""
+    game_html = r'''<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03131e;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e9fbff}body{touch-action:none}
+#wrap{position:relative;width:100%;height:690px;max-height:82vh;min-height:520px;border:1px solid rgba(91,220,255,.28);border-radius:28px;overflow:hidden;background:#031522;box-shadow:0 25px 70px rgba(0,0,0,.35),inset 0 1px rgba(255,255,255,.05)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;left:16px;right:16px;top:14px;display:flex;gap:8px;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:5}.stat{min-width:100px;padding:9px 12px;border:1px solid rgba(120,224,255,.20);border-radius:14px;background:rgba(3,25,38,.72);backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,.18)}.stat span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:1.3px;color:#82b6c8;font-weight:800}.stat b{display:block;font-size:18px;margin-top:2px}
+#mode{position:absolute;right:18px;top:76px;padding:7px 10px;border-radius:999px;background:rgba(3,25,38,.72);border:1px solid rgba(111,220,255,.18);font-size:10px;color:#a8dce9;z-index:5}#message{position:absolute;left:50%;top:92px;transform:translateX(-50%);width:min(520px,84%);text-align:center;padding:9px 14px;border-radius:14px;background:rgba(3,25,38,.72);border:1px solid rgba(111,220,255,.16);font-size:12px;color:#bfe8f3;z-index:5;opacity:0;transition:.25s}#message.show{opacity:1}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,rgba(1,13,21,.42),rgba(1,13,21,.76));z-index:10}.panel{width:min(560px,94%);padding:30px;border-radius:26px;border:1px solid rgba(104,221,255,.25);background:linear-gradient(145deg,rgba(5,43,60,.94),rgba(2,23,36,.94));box-shadow:0 30px 90px rgba(0,0,0,.45);text-align:center}.kicker{font-size:10px;letter-spacing:2px;color:#68dfff;font-weight:900;text-transform:uppercase}.title{font-size:36px;font-weight:950;letter-spacing:1px;margin:7px 0}.copy{color:#9dc9d6;line-height:1.55;font-size:13px}.hint{margin-top:16px;padding:12px;border-radius:14px;background:rgba(42,193,239,.07);border:1px solid rgba(89,213,255,.14);font-size:12px;color:#b8e6f0}button{font:inherit;color:#effcff;border:1px solid rgba(113,222,255,.25);background:linear-gradient(145deg,#0b5069,#063148);border-radius:15px;padding:12px 18px;font-weight:850;cursor:pointer;box-shadow:0 9px 22px rgba(0,0,0,.22);transition:.18s}button:hover{transform:translateY(-2px);border-color:rgba(113,231,255,.55)}button:active{transform:translateY(1px)}.primary{margin-top:18px;min-width:190px;background:linear-gradient(145deg,#13a9d4,#087394);box-shadow:0 0 28px rgba(26,202,255,.18)}
+#controls{position:absolute;left:16px;bottom:16px;right:16px;display:flex;justify-content:space-between;align-items:end;z-index:7;pointer-events:none}.pad{display:grid;grid-template-columns:58px 58px 58px;grid-template-rows:48px 48px;gap:6px;pointer-events:auto}.pad button{padding:0;font-size:22px;width:58px;height:48px;background:rgba(4,34,49,.76);backdrop-filter:blur(8px)}.up{grid-column:2}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:2}.right{grid-column:3;grid-row:2}.actions{display:flex;gap:7px;pointer-events:auto;align-items:end}.actions button{font-size:11px;padding:9px 12px;background:rgba(4,34,49,.78);backdrop-filter:blur(8px)}#tiltStatus{font-size:10px;color:#8fbfce;max-width:180px;text-align:right;line-height:1.4}#startOverlay{display:flex}.hidden{display:none!important}
+#result .title{font-size:32px}.scoregrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0}.scorebox{padding:12px;border-radius:15px;background:rgba(20,145,182,.08);border:1px solid rgba(94,215,255,.13)}.scorebox small{display:block;color:#81afbe;font-size:9px;text-transform:uppercase;letter-spacing:1px}.scorebox strong{display:block;font-size:22px;margin-top:3px}@media(max-width:650px){#wrap{height:78vh;min-height:500px;border-radius:20px}.stat{min-width:72px;padding:7px 8px}.stat b{font-size:15px}.stat span{font-size:8px}.title{font-size:29px}.panel{padding:24px 18px}.actions{flex-direction:column;align-items:flex-end}.actions button{padding:8px 10px}.pad{grid-template-columns:52px 52px 52px}.pad button{width:52px;height:44px}}
+</style>
+</head>
+<body>
+<div id="wrap">
+<canvas id="game"></canvas>
+<div id="hud"><div class="stat"><span>Distance</span><b id="distance">0 m</b></div><div class="stat"><span>Safety</span><b id="safety">100%</b></div><div class="stat"><span>Water</span><b id="water">Rising</b></div><div class="stat"><span>Score</span><b id="score">0</b></div></div>
+<div id="mode">KEYBOARD / TOUCH</div><div id="message"></div>
+<div id="controls"><div class="pad"><button class="up" data-key="up">▲</button><button class="left" data-key="left">◀</button><button class="down" data-key="down">▼</button><button class="right" data-key="right">▶</button></div><div class="actions"><div id="tiltStatus">Phone: press Tilt Control, then gently tilt left/right.</div><button id="tiltBtn">Enable Tilt</button><button id="pauseBtn">Pause</button></div></div>
+<div id="startOverlay" class="overlay"><div class="panel"><div class="kicker">HYDROSCOPE GAME</div><div class="title">HYDRO RUN</div><div class="copy">Navigate a small rescue boat through a rising fictional flood channel. Reach the safety station, avoid rocks and debris, collect emergency buoys and keep your boat safe.</div><div class="hint"><b>Laptop:</b> Arrow keys or WASD &nbsp; • &nbsp; <b>Phone:</b> Enable Tilt or use touch controls</div><button id="startBtn" class="primary">Launch Boat</button></div></div>
+<div id="result" class="overlay hidden"><div class="panel"><div class="kicker">MISSION COMPLETE</div><div class="title" id="resultTitle">SAFE ARRIVAL</div><div class="scoregrid"><div class="scorebox"><small>Score</small><strong id="rScore">0</strong></div><div class="scorebox"><small>Safety</small><strong id="rSafety">0%</strong></div><div class="scorebox"><small>Distance</small><strong id="rDistance">0 m</strong></div></div><div class="copy" id="resultCopy">You reached the downstream safety station.</div><button id="againBtn" class="primary">Run Again</button></div></div>
+</div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),wrap=document.getElementById('wrap');const distanceEl=document.getElementById('distance'),safetyEl=document.getElementById('safety'),waterEl=document.getElementById('water'),scoreEl=document.getElementById('score'),modeEl=document.getElementById('mode'),msgEl=document.getElementById('message');let W=900,H=620,dpr=1,last=0,raf=0,running=false,paused=false;let boat,scroll=0,distance=0,safety=100,score=0,spawn=0,hitCooldown=0,waterLevel=0,finishDistance=2600,collect=0;const keys={left:false,right:false,up:false,down:false};let obstacles=[],buoys=[],ripples=[],rain=[];
+function resize(){const r=wrap.getBoundingClientRect();W=Math.max(320,r.width);H=Math.max(480,r.height);dpr=Math.min(2,devicePixelRatio||1);canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}window.addEventListener('resize',resize);resize();function rand(a,b){return a+Math.random()*(b-a)}function river(){return{l:W*.18,r:W*.82}}function reset(){boat={x:W/2,y:H*.72,vx:0};scroll=0;distance=0;safety=100;score=0;spawn=.2;collect=0;hitCooldown=0;waterLevel=0;obstacles=[];buoys=[];ripples=[];rain=[];for(let i=0;i<95;i++)rain.push({x:Math.random()*W,y:Math.random()*H,l:rand(8,22),s:rand(250,520)});updateHud()}function updateHud(){distanceEl.textContent=Math.floor(distance)+' m';safetyEl.textContent=Math.max(0,Math.floor(safety))+'%';waterEl.textContent=waterLevel>72?'High':'Rising';scoreEl.textContent=score}function showMsg(t){msgEl.textContent=t;msgEl.classList.add('show');clearTimeout(showMsg.t);showMsg.t=setTimeout(()=>msgEl.classList.remove('show'),1600)}
+function addObstacle(){const r=river(),type=Math.random()<.58?'rock':Math.random()<.55?'log':'debris';obstacles.push({x:rand(r.l+30,r.r-30),y:-40,size:rand(18,34),speed:rand(90,150)+distance*.025,type,rot:rand(0,Math.PI*2),hit:false})}function addBuoy(){const r=river();buoys.push({x:rand(r.l+35,r.r-35),y:-25,size:11,speed:105+distance*.02})}
+function boatDraw(){ctx.save();ctx.translate(boat.x,boat.y);ctx.shadowColor='rgba(54,220,255,.45)';ctx.shadowBlur=22;ctx.fillStyle='#0b3042';ctx.beginPath();ctx.moveTo(-18,-22);ctx.lineTo(18,-22);ctx.lineTo(12,23);ctx.quadraticCurveTo(0,32,-12,23);ctx.closePath();ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#28c7ef';ctx.beginPath();ctx.moveTo(-13,-18);ctx.lineTo(13,-18);ctx.lineTo(7,15);ctx.quadraticCurveTo(0,21,-7,15);ctx.closePath();ctx.fill();ctx.fillStyle='#e9fbff';ctx.fillRect(-7,-12,14,9);ctx.fillStyle='#07334a';ctx.fillRect(-5,-10,10,5);ctx.fillStyle='rgba(110,235,255,.7)';ctx.beginPath();ctx.moveTo(-7,26);ctx.lineTo(0,50+Math.sin(scroll*.04)*5);ctx.lineTo(7,26);ctx.fill();ctx.restore()}
+function obstacleDraw(o){ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.rot+scroll*.002);if(o.type==='rock'){ctx.fillStyle='#5d6d73';ctx.beginPath();ctx.moveTo(-o.size*.8,o.size*.25);ctx.lineTo(-o.size*.45,-o.size*.55);ctx.lineTo(o.size*.1,-o.size*.8);ctx.lineTo(o.size*.75,-o.size*.35);ctx.lineTo(o.size*.8,o.size*.35);ctx.lineTo(0,o.size*.7);ctx.closePath();ctx.fill()}else if(o.type==='log'){ctx.fillStyle='#68452e';ctx.fillRect(-o.size,-o.size*.28,o.size*2,o.size*.56);ctx.fillStyle='#986943';ctx.beginPath();ctx.arc(o.size,0,o.size*.28,0,Math.PI*2);ctx.fill()}else{ctx.fillStyle='#263d46';ctx.fillRect(-o.size*.7,-o.size*.6,o.size*1.4,o.size*1.2);ctx.fillStyle='#86d8e6';ctx.fillRect(-o.size*.4,-o.size*.8,o.size*.8,4)}ctx.restore()}
+function buoyDraw(b){ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='#ffca62';ctx.shadowColor='rgba(255,202,98,.5)';ctx.shadowBlur=14;ctx.beginPath();ctx.arc(0,0,b.size,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#15384a';ctx.fillRect(-2,-b.size-10,4,10);ctx.restore()}
+function background(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#08293b');g.addColorStop(.45,'#06435b');g.addColorStop(1,'#03283c');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);const r=river();ctx.fillStyle='#064d68';ctx.fillRect(r.l,0,r.r-r.l,H);for(let i=0;i<18;i++){const y=((i*80+scroll*1.15)%H);ctx.strokeStyle='rgba(121,231,255,.13)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(r.l+15+(i%3)*40,y);ctx.quadraticCurveTo(W/2,y+8,r.r-15-(i%2)*35,y);ctx.stroke()}ctx.fillStyle='#0a3844';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(r.l,0);ctx.lineTo(r.l-30,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(r.r,0);ctx.lineTo(W,0);ctx.lineTo(W,H);ctx.lineTo(r.r+30,H);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(9,52,64,.9)';for(let i=0;i<7;i++){const x=(i*190-((scroll*.15)%190))-60;ctx.beginPath();ctx.moveTo(x,H*.18);ctx.lineTo(x+95,H*.04);ctx.lineTo(x+190,H*.18);ctx.lineTo(x+190,H*.38);ctx.lineTo(x,H*.38);ctx.closePath();ctx.fill()}const fy=H*.18+(finishDistance-distance)*.22;if(fy>-100&&fy<H+100){ctx.fillStyle='rgba(83,230,255,.10)';ctx.fillRect(r.l,fy,r.r-r.l,55);ctx.fillStyle='#8cecff';ctx.font='800 11px system-ui';ctx.textAlign='center';ctx.fillText('SAFETY STATION',W/2,fy+31)}}
+function drawRain(dt){ctx.strokeStyle='rgba(160,234,255,.18)';ctx.lineWidth=1;for(const p of rain){p.y+=p.s*dt;if(p.y>H){p.y=-20;p.x=Math.random()*W}ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-3,p.y+p.l);ctx.stroke()}}
+function update(dt){if(!running||paused)return;distance+=dt*42;scroll+=dt*145;waterLevel=Math.min(100,48+distance/finishDistance*45);const steer=(keys.left?-1:0)+(keys.right?1:0);boat.vx+=(steer*430-boat.vx)*Math.min(1,dt*5);boat.x+=boat.vx*dt;const r=river();boat.x=Math.max(r.l+24,Math.min(r.r-24,boat.x));if(keys.up)distance+=dt*16;if(keys.down)distance=Math.max(0,distance-dt*12);spawn-=dt;if(spawn<=0){addObstacle();if(Math.random()<.38)addBuoy();spawn=Math.max(.34,.78-distance/5000)}if(hitCooldown>0)hitCooldown-=dt;for(const o of obstacles)o.y+=o.speed*dt+scroll*.003;for(const b of buoys)b.y+=b.speed*dt+scroll*.002;for(const o of obstacles){const dx=o.x-boat.x,dy=o.y-boat.y;if(Math.hypot(dx,dy)<o.size+17&&!o.hit&&hitCooldown<=0){o.hit=true;hitCooldown=1;safety-=13;score=Math.max(0,score-25);ripples.push({x:boat.x,y:boat.y,r:4,a:1});showMsg('Collision — steer around the debris')}}for(const b of buoys){if(!b.collected&&Math.hypot(b.x-boat.x,b.y-boat.y)<b.size+18){b.collected=true;score+=30;collect++;safety=Math.min(100,safety+2);showMsg('Emergency buoy collected +30')}}obstacles=obstacles.filter(o=>o.y<H+80);buoys=buoys.filter(b=>b.y<H+60&&!b.collected);if(safety<=0||distance>=finishDistance)endGame(distance>=finishDistance);updateHud()}
+function draw(){background();drawRain(1/60);for(const b of buoys)buoyDraw(b);for(const o of obstacles)obstacleDraw(o);boatDraw();for(const q of ripples){q.r+=3;q.a-=.035;ctx.strokeStyle=`rgba(110,235,255,${Math.max(0,q.a)})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,Math.PI*2);ctx.stroke()}ripples=ripples.filter(q=>q.a>0)}function loop(t){const dt=Math.min(.035,(t-last)/1000||.016);last=t;update(dt);draw();raf=requestAnimationFrame(loop)}
+function start(){document.getElementById('startOverlay').classList.add('hidden');document.getElementById('result').classList.add('hidden');reset();running=true;paused=false;last=performance.now();showMsg('Boat launched — reach the safety station');cancelAnimationFrame(raf);raf=requestAnimationFrame(loop)}function endGame(success){running=false;cancelAnimationFrame(raf);document.getElementById('result').classList.remove('hidden');document.getElementById('resultTitle').textContent=success?'SAFE ARRIVAL':'BOAT LOST';document.getElementById('rScore').textContent=score;document.getElementById('rSafety').textContent=Math.max(0,Math.floor(safety))+'%';document.getElementById('rDistance').textContent=Math.floor(distance)+' m';document.getElementById('resultCopy').textContent=success?`You reached the downstream safety station and collected ${collect} emergency buoys.`:'The boat could not safely reach the station. Try again and steer earlier around hazards.'}function togglePause(){if(!running)return;paused=!paused;document.getElementById('pauseBtn').textContent=paused?'Resume':'Pause';if(!paused){last=performance.now();raf=requestAnimationFrame(loop)}}
+function key(e,down){const k=e.key.toLowerCase(),map={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'};if(map[k]){keys[map[k]]=down;e.preventDefault()}}window.addEventListener('keydown',e=>key(e,true),{passive:false});window.addEventListener('keyup',e=>key(e,false),{passive:false});for(const b of document.querySelectorAll('[data-key]')){const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true;b.setPointerCapture?.(e.pointerId)});['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>keys[k]=false))}canvas.addEventListener('pointermove',e=>{if(e.pointerType==='touch'&&running&&!paused){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left;keys.left=x<W/2-18;keys.right=x>W/2+18}});canvas.addEventListener('pointerup',()=>{keys.left=false;keys.right=false});
+async function enableTilt(){try{if(typeof DeviceOrientationEvent==='undefined'){showMsg('Tilt is not supported on this device');return}if(typeof DeviceOrientationEvent.requestPermission==='function'){const p=await DeviceOrientationEvent.requestPermission();if(p!=='granted'){showMsg('Tilt permission was not granted');return}}window.addEventListener('deviceorientation',e=>{if(e.gamma==null)return;const g=Math.max(-35,Math.min(35,e.gamma));keys.left=g<-6;keys.right=g>6},true);modeEl.textContent='PHONE TILT ACTIVE';document.getElementById('tiltStatus').textContent='Tilt active — steer gently left/right.';showMsg('Tilt control enabled')}catch(err){showMsg('Tilt could not be enabled in this browser')}}document.getElementById('startBtn').onclick=start;document.getElementById('againBtn').onclick=start;document.getElementById('pauseBtn').onclick=togglePause;document.getElementById('tiltBtn').onclick=enableTilt;reset();draw();
+</script>
+</body>
+</html>'''
+    components.html(game_html, height=720, scrolling=False)
+    st.caption("Hydro Run is a fictional browser game. Use WASD/arrow keys, touch controls, or phone tilt. Tilt requires a supported browser, HTTPS and, on some devices, permission after pressing Enable Tilt.")
 
 def dam_map(location):
     lat,lon=LOCATIONS[location]
@@ -694,7 +651,7 @@ if "authority" not in st.session_state: st.session_state.authority=False
 st.markdown('<div class="hs-brand"><div class="hs-brand-title"><span>HYDRO</span>SCOPE</div><div class="hs-brand-sub">PUBLIC FLOOD AWARENESS  /  DAM MONITORING  /  PREDICTIVE WATER INTELLIGENCE</div><div class="hs-status"><span class="hs-dot"></span>SYSTEM ONLINE</div></div>',unsafe_allow_html=True)
 st.write("")
 
-nav=["Home","Public Dashboard","Hydro Guardian","Authority Access"]
+nav=["Home","Public Dashboard","Hydro Run","Authority Access"]
 if st.session_state.authority: nav += ["Prediction","Authority Console","Hydraulic Simulation"]
 cols=st.columns(len(nav))
 for c,name in zip(cols,nav):
@@ -725,11 +682,11 @@ if st.session_state.page=="Home":
     with b:
         st.markdown('<div class="hs-card"><div class="hs-card-label">02 / Understand</div><div class="hs-card-title">Watch the water story</div><p class="hs-card-copy">The reservoir, gates and downstream river are presented as one connected visual story.</p></div>',unsafe_allow_html=True)
     with c:
-        st.markdown('<div class="hs-card"><div class="hs-card-label">03 / Learn</div><div class="hs-card-title">Play Hydro Guardian</div><p class="hs-card-copy">Test how early monitoring, public warnings and preparedness affect a fictional flood scenario.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-card"><div class="hs-card-label">03 / Learn</div><div class="hs-card-title">Play Hydro Run</div><p class="hs-card-copy">Pilot a rescue boat through a rising fictional flood channel using keys, touch controls or phone tilt.</p></div>',unsafe_allow_html=True)
     st.write("")
     x,y=st.columns(2)
     if x.button("Explore Public Dashboard",key="home_public",type="primary"): st.session_state.page="Public Dashboard"; st.rerun()
-    if y.button("Play Hydro Guardian",key="home_game"): st.session_state.page="Hydro Guardian"; st.rerun()
+    if y.button("Play Hydro Run",key="home_game"): st.session_state.page="Hydro Run"; st.rerun()
 
 # ============================================================
 # PUBLIC DASHBOARD
@@ -840,8 +797,8 @@ elif st.session_state.page=="Public Dashboard":
 # ============================================================
 # HYDRO GUARDIAN
 # ============================================================
-elif st.session_state.page=="Hydro Guardian":
-    hydro_game_page()
+elif st.session_state.page=="Hydro Run":
+    hydro_run_page()
 
 # ============================================================
 # PREDICTION

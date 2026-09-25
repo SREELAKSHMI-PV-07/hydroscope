@@ -145,6 +145,19 @@ div.stButton>button:active{transform:translateY(1px) scale(.985)}
 .hs-pill{display:inline-block;padding:6px 11px;border-radius:999px;border:1px solid rgba(91,216,255,.22);background:rgba(31,178,224,.08);font-size:11px;color:#aeeaff;font-weight:800;letter-spacing:.6px}
 .hs-note{padding:15px 17px;border-radius:16px;background:rgba(10,47,62,.72);border:1px solid rgba(91,214,255,.15);color:#a8cbd7;font-size:13px;line-height:1.55}
 
+/* Interactive dashboard controls */
+.hs-gauge{position:relative;height:15px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(100,215,255,.16);overflow:hidden;margin-top:15px}
+.hs-gauge-fill{height:100%;background:linear-gradient(90deg,#1aa8db,#6ee8ff);box-shadow:0 0 22px rgba(67,214,255,.35);border-radius:999px;transition:width .6s ease}
+.hs-gauge-marker{position:absolute;top:-3px;width:21px;height:21px;border-radius:50%;background:#effcff;border:4px solid #39cfff;transform:translateX(-50%);box-shadow:0 0 18px rgba(57,207,255,.55)}
+.hs-gauge-labels{display:flex;justify-content:space-between;color:#7099aa;font-size:10px;margin-top:6px}
+.hs-gauge-labels strong{color:#dff9ff;font-size:12px}
+.shutter-row{display:flex;gap:8px;margin-top:15px}
+.shutter{height:34px;flex:1;border-radius:8px;border:1px solid rgba(125,220,255,.2);background:linear-gradient(180deg,#0c4056,#062637);box-shadow:inset 0 1px rgba(255,255,255,.04);transition:.25s}
+.shutter.open{background:linear-gradient(180deg,#39d8ff,#087ca4);box-shadow:0 0 18px rgba(50,205,255,.22)}
+.hs-interactive{padding:18px;border-radius:22px;border:1px solid rgba(100,215,255,.17);background:linear-gradient(145deg,rgba(8,49,67,.82),rgba(3,24,38,.86));box-shadow:10px 16px 34px rgba(0,0,0,.2);}
+.hs-mini{font-size:11px;color:#80adbf;text-transform:uppercase;letter-spacing:1.4px;font-weight:800}
+.hs-big{font-size:30px;font-weight:900;margin-top:5px}
+.hs-click{font-size:12px;color:#9ec9d8;margin-top:5px}
 /* Streamlit metrics */
 div[data-testid="stMetric"]{
     min-height:112px;
@@ -226,7 +239,40 @@ DAM_DATABASE={
 "Kakki Dam":{"district":"Pathanamthitta","lat":9.35,"lon":77.0,"water_level":70.0,"inflow":520.0,"outflow":190.0,"rainfall":44.0,"total_shutters":4,"open_shutters":1,"opening_percent":15,"risk":"Normal","status":"PROTOTYPE"},
 "Neyyar Dam":{"district":"Thiruvananthapuram","lat":8.535,"lon":77.145,"water_level":58.0,"inflow":190.0,"outflow":75.0,"rainfall":31.0,"total_shutters":4,"open_shutters":0,"opening_percent":0,"risk":"Normal","status":"PROTOTYPE"},
 "Banasura Sagar Dam":{"district":"Wayanad","lat":11.7,"lon":75.95,"water_level":63.0,"inflow":330.0,"outflow":120.0,"rainfall":52.0,"total_shutters":4,"open_shutters":1,"opening_percent":10,"risk":"Normal","status":"PROTOTYPE"}}
-LOCATIONS={"Kochi":(9.9312,76.2673),"Idukki":(9.85,76.97),"Munnar":(10.0889,77.0595),"Kothamangalam":(10.058,76.629),"Thodupuzha":(9.895,76.718),"Kottayam":(9.5916,76.5222),"Pathanamthitta":(9.2648,76.787),"Alappuzha":(9.4981,76.3388),"Thiruvananthapuram":(8.5241,76.9366),"Wayanad":(11.6854,76.132)}
+# Major Kerala locations: district headquarters plus major cities/towns used as public search points.
+# Coordinates are representative map points; they are not intended as precise user geolocation.
+LOCATIONS={
+"Thiruvananthapuram":(8.5241,76.9366),"Neyyattinkara":(8.3988,77.0820),"Attingal":(8.6961,76.8151),"Varkala":(8.7379,76.7163),
+"Kollam":(8.8932,76.6141),"Karunagappally":(9.0580,76.5350),"Punalur":(9.0005,76.9254),"Kottarakkara":(9.0060,76.7729),
+"Pathanamthitta":(9.2648,76.7870),"Adoor":(9.1551,76.7319),"Thiruvalla":(9.3835,76.5740),"Ranni":(9.3850,76.8120),"Konni":(9.2343,76.8497),
+"Alappuzha":(9.4981,76.3388),"Cherthala":(9.6850,76.3356),"Kayamkulam":(9.1810,76.5009),"Chengannur":(9.3151,76.6151),"Mavelikara":(9.2594,76.5560),
+"Kottayam":(9.5916,76.5222),"Changanassery":(9.4420,76.5363),"Pala":(9.7047,76.6856),"Ettumanoor":(9.6690,76.5600),"Vaikom":(9.7480,76.3950),
+"Painavu":(9.8500,76.9726),"Thodupuzha":(9.8950,76.7180),"Munnar":(10.0889,77.0595),"Adimali":(10.0110,76.9560),"Kattappana":(9.7550,77.1140),"Nedumkandam":(9.7930,77.1260),
+"Kochi":(9.9312,76.2673),"Aluva":(10.1076,76.3516),"Angamaly":(10.1960,76.3860),"Perumbavoor":(10.1076,76.4730),"Muvattupuzha":(9.9847,76.5790),"Kothamangalam":(10.0580,76.6290),"North Paravur":(10.1480,76.2260),
+"Thrissur":(10.5276,76.2144),"Chalakudy":(10.3070,76.3310),"Kodungallur":(10.2220,76.1990),"Irinjalakuda":(10.3420,76.2110),"Guruvayur":(10.5940,76.0410),"Kunnamkulam":(10.6500,76.0820),
+"Palakkad":(10.7867,76.6548),"Ottapalam":(10.7720,76.3770),"Shoranur":(10.7590,76.2700),"Chittur":(10.6990,76.7470),"Mannarkkad":(10.9920,76.4610),
+"Malappuram":(11.0510,76.0711),"Manjeri":(11.1200,76.1190),"Perinthalmanna":(10.9780,76.2260),"Tirur":(10.9130,75.9220),"Ponnani":(10.7670,75.9250),"Kondotty":(11.1450,75.9600),
+"Kozhikode":(11.2588,75.7804),"Vadakara":(11.5940,75.5890),"Koyilandy":(11.4390,75.6950),"Ramanattukara":(11.1830,75.8650),
+"Kalpetta":(11.6080,76.0830),"Sulthan Bathery":(11.6630,76.2640),"Mananthavady":(11.8000,76.0010),
+"Kannur":(11.8745,75.3704),"Thalassery":(11.7480,75.4890),"Payyannur":(12.1030,75.2020),"Iritty":(11.9810,75.6750),"Mattannur":(11.9300,75.5720),
+"Kasaragod":(12.4996,74.9869),"Kanhangad":(12.3080,75.1060),"Nileshwar":(12.2590,75.1350),"Uppala":(12.6710,74.9500)
+}
+LOCATION_DISTRICTS={
+"Thiruvananthapuram":"Thiruvananthapuram","Neyyattinkara":"Thiruvananthapuram","Attingal":"Thiruvananthapuram","Varkala":"Thiruvananthapuram",
+"Kollam":"Kollam","Karunagappally":"Kollam","Punalur":"Kollam","Kottarakkara":"Kollam",
+"Pathanamthitta":"Pathanamthitta","Adoor":"Pathanamthitta","Thiruvalla":"Pathanamthitta","Ranni":"Pathanamthitta","Konni":"Pathanamthitta",
+"Alappuzha":"Alappuzha","Cherthala":"Alappuzha","Kayamkulam":"Alappuzha","Chengannur":"Alappuzha","Mavelikara":"Alappuzha",
+"Kottayam":"Kottayam","Changanassery":"Kottayam","Pala":"Kottayam","Ettumanoor":"Kottayam","Vaikom":"Kottayam",
+"Painavu":"Idukki","Thodupuzha":"Idukki","Munnar":"Idukki","Adimali":"Idukki","Kattappana":"Idukki","Nedumkandam":"Idukki",
+"Kochi":"Ernakulam","Aluva":"Ernakulam","Angamaly":"Ernakulam","Perumbavoor":"Ernakulam","Muvattupuzha":"Ernakulam","Kothamangalam":"Ernakulam","North Paravur":"Ernakulam",
+"Thrissur":"Thrissur","Chalakudy":"Thrissur","Kodungallur":"Thrissur","Irinjalakuda":"Thrissur","Guruvayur":"Thrissur","Kunnamkulam":"Thrissur",
+"Palakkad":"Palakkad","Ottapalam":"Palakkad","Shoranur":"Palakkad","Chittur":"Palakkad","Mannarkkad":"Palakkad",
+"Malappuram":"Malappuram","Manjeri":"Malappuram","Perinthalmanna":"Malappuram","Tirur":"Malappuram","Ponnani":"Malappuram","Kondotty":"Malappuram",
+"Kozhikode":"Kozhikode","Vadakara":"Kozhikode","Koyilandy":"Kozhikode","Ramanattukara":"Kozhikode",
+"Kalpetta":"Wayanad","Sulthan Bathery":"Wayanad","Mananthavady":"Wayanad",
+"Kannur":"Kannur","Thalassery":"Kannur","Payyannur":"Kannur","Iritty":"Kannur","Mattannur":"Kannur",
+"Kasaragod":"Kasaragod","Kanhangad":"Kasaragod","Nileshwar":"Kasaragod","Uppala":"Kasaragod"
+}
 
 # ============================================================
 # HELPERS
@@ -243,6 +289,28 @@ def nearby_dams(location,radius=120):
         if dist<=radius:
             x=d.copy(); x["name"]=name; x["distance"]=dist; out.append(x)
     return sorted(out,key=lambda x:x["distance"])
+
+def location_options(district="All districts", search=""):
+    names=[n for n in LOCATIONS if district=="All districts" or LOCATION_DISTRICTS.get(n)==district]
+    search=search.strip().lower()
+    if search:
+        names=[n for n in names if search in n.lower()]
+    return names
+
+def risk_score(d):
+    level=min(100,d["water_level"]); flow=min(100,d["inflow"]/20); opening=min(100,d["opening_percent"]*2)
+    return int(min(100,round(level*.45+flow*.35+opening*.20)))
+
+def water_level_gauge(level):
+    pct=max(0,min(100,level))
+    return f'''<div class="hs-gauge"><div class="hs-gauge-fill" style="width:{pct}%;"></div><div class="hs-gauge-marker" style="left:{pct}%"></div></div><div class="hs-gauge-labels"><span>0</span><strong>{level:.1f}</strong><span>100</span></div>'''
+
+def shutter_visual(opened,total):
+    blocks=[]
+    for i in range(total):
+        state="open" if i<opened else "closed"
+        blocks.append(f'<span class="shutter {state}"></span>')
+    return '<div class="shutter-row">'+''.join(blocks)+'</div>'
 
 @st.cache_data(ttl=600)
 def weather(lat,lon):
@@ -400,6 +468,8 @@ if st.session_state.page=="Home":
     with c:
         st.markdown('<div class="hs-card"><div class="hs-card-label">03 / Authority</div><div class="hs-card-title">Technical scenario analysis</div><p class="hs-card-copy">Authorized users can open the detailed hydraulic scenario workspace for depth, velocity and arrival-time analysis.</p></div>',unsafe_allow_html=True)
     st.write("")
+    st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Kerala coverage</div><div class="hs-big">{len(LOCATIONS)} public search locations</div><div class="hs-click">All 14 districts represented through district headquarters and major towns.</div></div>',unsafe_allow_html=True)
+    st.write("")
     if st.button("Open Public Dashboard",key="home_public",type="primary"):
         st.session_state.page="Public Dashboard"; st.rerun()
 
@@ -408,9 +478,28 @@ if st.session_state.page=="Home":
 # ============================================================
 elif st.session_state.page=="Public Dashboard":
     st.markdown('<div class="hs-section">Public Safety Dashboard</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    st.markdown('<div class="hs-note">This public view focuses on current conditions and understandable release-impact information. Detailed dam-break hydraulic simulation is restricted to verified authority users.</div>',unsafe_allow_html=True)
-    loc=st.selectbox("Your location",list(LOCATIONS),key="public_loc")
+    st.markdown('<div class="hs-note">Explore Kerala by district and location. Select a place to see nearby monitored dams, live weather context, water conditions and public release-impact information.</div>',unsafe_allow_html=True)
+
+    districts=["All districts"]+list(dict.fromkeys(LOCATION_DISTRICTS.values()))
+    c1,c2,c3=st.columns([1.1,1.5,1.0])
+    with c1:
+        district=st.selectbox("District",districts,key="public_district")
+    with c2:
+        search=st.text_input("Search location",placeholder="Type a city or town",key="public_search")
+    options=location_options(district,search)
+    if not options:
+        st.warning("No matching location. Clear the search or choose another district.")
+        st.stop()
+    with c3:
+        default_loc=st.session_state.get("public_loc",options[0])
+        if default_loc not in options: default_loc=options[0]
+        loc=st.selectbox("Monitoring location",options,index=options.index(default_loc),key="public_loc")
+
     lat,lon=LOCATIONS[loc]
+    st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Selected location</div><div class="hs-big">{loc}</div><div class="hs-click">{LOCATION_DISTRICTS[loc]} district  |  {lat:.4f}, {lon:.4f}</div></div>',unsafe_allow_html=True)
+    st.write("")
+
+    radius=st.slider("Monitoring radius",50,200,120,10,key="public_radius")
     w=weather(lat,lon)
     if w["success"]:
         a,b,c,d=st.columns(4)
@@ -419,17 +508,45 @@ elif st.session_state.page=="Public Dashboard":
         c.metric("Humidity",f"{w['humidity']}%")
         d.metric("Wind",f"{w['wind']:.1f} m/s")
         st.caption("Weather data provided by OpenWeather.")
-    dams=nearby_dams(loc)
-    st.markdown('<div class="hs-section">Nearby Dams</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    cards=st.columns(3)
-    for i,d in enumerate(dams):
-        with cards[i%3]:
-            st.markdown(f'<div class="hs-card"><span class="hs-pill">{d["risk"]}  /  {d["distance"]:.1f} km</span><div class="hs-card-title" style="margin-top:12px">{d["name"]}</div><div class="hs-card-copy">Water level <b>{d["water_level"]:.1f}</b>  ·  Shutters <b>{d["open_shutters"]}/{d["total_shutters"]}</b>  ·  Opening <b>{d["opening_percent"]}%</b></div></div>',unsafe_allow_html=True)
-            zones=public_release_impact(d)
-            st.caption("Potential controlled-release impact: "+"  ·  ".join(f"{z}: {r}" for z,r in zones))
-    st.markdown('<div class="hs-section">Monitoring Map</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    st_folium(dam_map(loc),height=520,width=None,returned_objects=[])
-    st.markdown('<div class="hs-note">HYDROSCOPE provides public awareness and safety information. Official warnings and evacuation instructions remain the responsibility of authorized agencies.</div>',unsafe_allow_html=True)
+
+    dams=nearby_dams(loc,radius)
+    st.markdown(f'<div class="hs-section">Nearby Dams <span class="hs-pill">{len(dams)} within {radius} km</span></div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    if dams:
+        dam_names=[d["name"] for d in dams]
+        selected_name=st.selectbox("Select a dam to inspect",dam_names,key="public_dam_focus")
+        focus=next(d for d in dams if d["name"]==selected_name)
+        a,b=st.columns([1.35,.9])
+        with a:
+            st.markdown(f'<div class="hs-card"><div class="hs-card-label">Dam status</div><div class="hs-card-title">{focus["name"]}</div><div class="hs-card-copy">{focus["district"]} district  |  {focus["distance"]:.1f} km from {loc}</div>{water_level_gauge(focus["water_level"])}<div class="hs-card-copy" style="margin-top:16px">Water level indicator</div>{shutter_visual(focus["open_shutters"],focus["total_shutters"])}<div class="hs-card-copy" style="margin-top:8px">Open shutters: <b>{focus["open_shutters"]}/{focus["total_shutters"]}</b>  |  Opening: <b>{focus["opening_percent"]}%</b></div></div>',unsafe_allow_html=True)
+        with b:
+            score=risk_score(focus)
+            st.markdown(f'<div class="hs-card"><div class="hs-card-label">Public condition index</div><div class="hs-card-value">{score}/100</div><p class="hs-card-copy">Prototype indicator combining reservoir level, inflow and shutter opening. It is not an official warning level.</p><span class="hs-pill">{focus["risk"]}</span></div>',unsafe_allow_html=True)
+            zones=public_release_impact(focus)
+            st.markdown('<div class="hs-card" style="margin-top:14px"><div class="hs-card-label">Potential downstream impact</div>'+''.join(f'<div class="hs-card-copy" style="margin-top:9px"><b>{z}</b><span style="float:right">{r}</span></div>' for z,r in zones)+'</div>',unsafe_allow_html=True)
+
+        c1,c2,c3=st.columns(3)
+        with c1:
+            if st.button("Center map on dam",key="center_dam",use_container_width=True):
+                st.session_state.map_center=(focus["lat"],focus["lon"])
+                st.rerun()
+        with c2:
+            if st.button("Open prediction",key="open_prediction",use_container_width=True):
+                st.session_state.pred_dam=focus["name"]; st.session_state.page="Prediction"; st.rerun()
+        with c3:
+            st.button("Refresh weather",key="refresh_weather",use_container_width=True,on_click=lambda: weather.clear())
+
+        cards=st.columns(3)
+        for i,d in enumerate(dams):
+            with cards[i%3]:
+                st.markdown(f'<div class="hs-card"><span class="hs-pill">{d["risk"]}  /  {d["distance"]:.1f} km</span><div class="hs-card-title" style="margin-top:12px">{d["name"]}</div><div class="hs-card-copy">Level <b>{d["water_level"]:.1f}</b>  |  Inflow <b>{d["inflow"]:.0f}</b> m3/s</div></div>',unsafe_allow_html=True)
+                if st.button("Inspect",key=f"inspect_{d['name']}",use_container_width=True):
+                    st.session_state.public_dam_focus=d["name"]; st.rerun()
+    else:
+        st.info("No demo dams are currently within this radius. The public interface is ready for additional verified reservoir feeds.")
+
+    st.markdown('<div class="hs-section">Kerala Monitoring Map</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    st_folium(dam_map(loc),height=560,width=None,returned_objects=[])
+    st.markdown('<div class="hs-note">HYDROSCOPE provides public awareness and safety information. Official warnings and evacuation instructions remain the responsibility of authorized agencies. Demo dam parameters are clearly marked as prototype data.</div>',unsafe_allow_html=True)
 
 # ============================================================
 # PREDICTION

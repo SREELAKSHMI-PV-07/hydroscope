@@ -184,6 +184,31 @@ div[data-baseweb="input"]>div{
 
 .hs-footer{text-align:center;color:#648fa4;font-size:11px;letter-spacing:.8px;padding-top:30px}
 
+/* Interactive reservoir / game visuals */
+.hs-dam-scene{position:relative;height:390px;border-radius:30px;border:1px solid rgba(105,220,255,.22);overflow:hidden;background:linear-gradient(180deg,#071d2b 0%,#063b55 46%,#052537 100%);box-shadow:0 25px 70px rgba(0,0,0,.30),inset 0 1px rgba(255,255,255,.06);}
+.hs-dam-sky{position:absolute;inset:0;background:radial-gradient(circle at 76% 18%,rgba(117,230,255,.18),transparent 20%),linear-gradient(180deg,rgba(5,22,34,.25),transparent 60%);}
+.hs-moon{position:absolute;right:9%;top:9%;width:58px;height:58px;border-radius:50%;background:rgba(220,249,255,.75);box-shadow:0 0 35px rgba(113,224,255,.35);}
+.hs-mountain{position:absolute;bottom:31%;width:0;height:0;border-left:180px solid transparent;border-right:180px solid transparent;border-bottom:155px solid rgba(11,61,78,.9);}
+.hs-mountain.m1{left:-50px}.hs-mountain.m2{right:-70px;transform:scale(.78);border-bottom-color:rgba(9,53,70,.92)}
+.hs-reservoir{position:absolute;left:0;right:0;bottom:28%;height:48%;overflow:hidden;background:linear-gradient(180deg,rgba(24,164,211,.78),rgba(5,87,125,.92));border-top:2px solid rgba(128,236,255,.45);}
+.hs-waterline{position:absolute;inset:0;background:repeating-linear-gradient(-4deg,rgba(150,243,255,.18) 0 2px,transparent 2px 17px);animation:waterShift 5s linear infinite;}
+@keyframes waterShift{from{transform:translateX(-50px)}to{transform:translateX(50px)}}
+.hs-reservoir-fill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(104,229,255,.32),rgba(0,92,145,.2));transition:height .8s ease;}
+.hs-dam-wall{position:absolute;left:50%;bottom:28%;transform:translateX(-50%);width:270px;height:155px;background:linear-gradient(90deg,#5b7280,#9db0b9 42%,#526b78);clip-path:polygon(10% 0,90% 0,100% 100%,0 100%);box-shadow:0 15px 28px rgba(0,0,0,.28);}
+.hs-gates{position:absolute;left:50%;bottom:28%;transform:translateX(-50%);width:220px;height:115px;display:flex;gap:7px;align-items:flex-end;justify-content:center;padding:10px 16px;}
+.hs-gate{height:92px;flex:1;border-radius:4px 4px 0 0;border:1px solid rgba(225,250,255,.28);background:linear-gradient(90deg,#29434e,#9db1b9,#2b4651);position:relative;overflow:hidden;}
+.hs-gate.open:after{content:"";position:absolute;left:25%;right:25%;bottom:-55px;height:100px;background:linear-gradient(180deg,rgba(136,243,255,.85),rgba(29,171,222,.05));border-radius:50%;filter:blur(2px);animation:flowPulse 1.8s ease-in-out infinite;}
+@keyframes flowPulse{0%,100%{transform:scaleX(.8);opacity:.55}50%{transform:scaleX(1.2);opacity:.95}}
+.hs-river{position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(180deg,#087fa8,#032e49);clip-path:polygon(0 32%,18% 20%,37% 40%,54% 16%,72% 37%,100% 12%,100% 100%,0 100%);}
+.hs-river:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(-7deg,rgba(157,244,255,.18) 0 2px,transparent 2px 23px);animation:riverFlow 4s linear infinite;}
+@keyframes riverFlow{from{transform:translateX(-70px)}to{transform:translateX(70px)}}
+.hs-scene-label{position:absolute;z-index:5;left:24px;top:22px}.hs-scene-label .big{font-size:28px;font-weight:900}.hs-scene-label .small{font-size:10px;letter-spacing:1.5px;color:#8cc6d8;text-transform:uppercase;font-weight:800;margin-bottom:4px}
+.hs-scene-level{position:absolute;right:24px;top:22px;z-index:5;text-align:right}.hs-scene-level strong{font-size:30px;font-weight:900}.hs-scene-level span{display:block;color:#9acbd9;font-size:11px}
+.hs-game{position:relative;padding:28px;border-radius:28px;border:1px solid rgba(102,221,255,.25);background:linear-gradient(145deg,rgba(7,52,72,.94),rgba(3,25,39,.96));box-shadow:20px 25px 55px rgba(0,0,0,.28);overflow:hidden;}
+.hs-game:before{content:"";position:absolute;left:-10%;right:-10%;bottom:-30%;height:55%;background:radial-gradient(ellipse,rgba(40,208,255,.17),transparent 65%);animation:gameGlow 6s ease-in-out infinite alternate;}
+@keyframes gameGlow{from{transform:translateX(-3%)}to{transform:translateX(3%)}}
+.hs-game-title{font-size:38px;font-weight:950;letter-spacing:2px}.hs-game-sub{color:#91c6d6;font-size:13px;line-height:1.6}.hs-game-stat{padding:16px;border-radius:18px;border:1px solid rgba(100,215,255,.17);background:rgba(4,31,46,.72);text-align:center}.hs-game-stat strong{display:block;font-size:25px;margin-top:5px}.hs-game-bar{height:14px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;border:1px solid rgba(100,215,255,.15);margin-top:9px}.hs-game-bar>span{display:block;height:100%;background:linear-gradient(90deg,#1daedb,#79e7ff);transition:width .4s ease}.hs-game-over{padding:22px;border-radius:22px;border:1px solid rgba(100,220,255,.3);background:rgba(8,58,77,.72);text-align:center}.hs-score{font-size:54px;font-weight:950;color:#7de9ff}
+
 /* Remove default Streamlit decoration */
 #MainMenu,footer{visibility:hidden}
 </style>
@@ -497,6 +522,83 @@ def public_release_assessment(d, scenario_shutters):
         "current_fraction":current_fraction
     }
 
+def interactive_dam_visual(dam):
+    pct=max(8,min(94,dam["water_level"]))
+    gates=[]
+    for i in range(dam["total_shutters"]):
+        gates.append('<span class="hs-gate open"></span>' if i < dam["open_shutters"] else '<span class="hs-gate"></span>')
+    return f'''<div class="hs-dam-scene">
+      <div class="hs-dam-sky"></div><div class="hs-moon"></div>
+      <div class="hs-mountain m1"></div><div class="hs-mountain m2"></div>
+      <div class="hs-scene-label"><div class="small">Interactive reservoir view</div><div class="big">{dam["name"]}</div></div>
+      <div class="hs-scene-level"><strong>{dam["water_level"]:.1f} m</strong><span>current prototype level</span></div>
+      <div class="hs-reservoir"><div class="hs-waterline"></div><div class="hs-reservoir-fill" style="height:{pct}%"></div></div>
+      <div class="hs-dam-wall"></div><div class="hs-gates">{''.join(gates)}</div>
+      <div class="hs-river"></div>
+    </div>'''
+
+
+def hydro_guardian_reset():
+    st.session_state.game_started=True
+    st.session_state.game_over=False
+    st.session_state.game_step=0
+    st.session_state.game_score=0
+    st.session_state.game_safety=55
+    st.session_state.game_water=58
+    st.session_state.game_message="A monsoon cell is approaching the fictional valley. Start monitoring early."
+
+
+def hydro_guardian_choice(choice):
+    step=st.session_state.game_step
+    outcomes=[
+        {"monitor":(8,5,"Good monitoring gives the response team more lead time."),"warning":(12,9,"Early public information improves preparedness."),"evacuate":(4,2,"Evacuation information is useful, but the first step is confirming the evolving situation.")},
+        {"monitor":(10,4,"The reservoir trend is now being watched closely."),"warning":(11,8,"A targeted warning helps downstream communities prepare."),"evacuate":(7,6,"Preparedness action helps, but broad evacuation should follow verified agency guidance.")},
+        {"monitor":(6,3,"Monitoring alone is less effective once downstream risk is rising."),"warning":(13,10,"A clear warning creates valuable response time."),"evacuate":(14,12,"Prompt preparedness can reduce exposure when risk is escalating.")},
+    ]
+    score,safety,msg=outcomes[min(step,2)][choice]
+    st.session_state.game_score=min(100,st.session_state.game_score+score)
+    st.session_state.game_safety=min(100,st.session_state.game_safety+safety)
+    st.session_state.game_water=min(100,st.session_state.game_water+[12,18,22][min(step,2)])
+    st.session_state.game_message=msg
+    st.session_state.game_step+=1
+    if st.session_state.game_step>=3: st.session_state.game_over=True
+
+
+def hydro_game_page():
+    st.markdown('<div class="hs-section">Hydro Guardian</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-game"><div class="hs-game-title">PROTECT THE VALLEY</div><div class="hs-game-sub">A short educational mini-game inside HYDROSCOPE. Manage information and preparedness as rainfall increases. This fictional simulation does not control or predict any real dam.</div></div>',unsafe_allow_html=True)
+    if "game_started" not in st.session_state: st.session_state.game_started=False
+    if not st.session_state.game_started:
+        st.write("")
+        st.markdown('<div class="hs-note">Three events. One fictional valley. Choose how you respond as rainfall and reservoir level rise.</div>',unsafe_allow_html=True)
+        if st.button("Start Hydro Guardian",type="primary",key="start_game"): hydro_guardian_reset(); st.rerun()
+        return
+    if st.session_state.get("game_over"):
+        a,b,c=st.columns(3)
+        a.markdown(f'<div class="hs-game-stat">Safety<strong>{st.session_state.game_safety}%</strong></div>',unsafe_allow_html=True)
+        b.markdown(f'<div class="hs-game-stat">Score<strong>{st.session_state.game_score}</strong></div>',unsafe_allow_html=True)
+        c.markdown('<div class="hs-game-stat">Result<strong>Mission complete</strong></div>',unsafe_allow_html=True)
+        st.write("")
+        st.markdown(f'<div class="hs-game-over"><div class="hs-score">{st.session_state.game_score}</div><div>HYDRO GUARDIAN SCORE</div><p>{st.session_state.game_message}</p><p>Key lesson: early information and preparedness can create more time for communities to respond.</p></div>',unsafe_allow_html=True)
+        if st.button("Play Again",type="primary",key="restart_game"): hydro_guardian_reset(); st.rerun()
+        return
+    step=st.session_state.game_step
+    rainfall=[82,118,151][min(step,2)]
+    level=st.session_state.game_water
+    a,b,c=st.columns(3)
+    a.markdown(f'<div class="hs-game-stat">Rainfall<strong>{rainfall} mm</strong><div class="hs-game-bar"><span style="width:{min(100,rainfall/1.6)}%"></span></div></div>',unsafe_allow_html=True)
+    b.markdown(f'<div class="hs-game-stat">Reservoir<strong>{level}%</strong><div class="hs-game-bar"><span style="width:{level}%"></span></div></div>',unsafe_allow_html=True)
+    c.markdown(f'<div class="hs-game-stat">Community safety<strong>{st.session_state.game_safety}%</strong><div class="hs-game-bar"><span style="width:{st.session_state.game_safety}%"></span></div></div>',unsafe_allow_html=True)
+    st.write("")
+    st.markdown(f'<div class="hs-card"><div class="hs-card-label">Event {step+1} of 3</div><div class="hs-card-title">Rainfall is intensifying</div><p class="hs-card-copy">{st.session_state.game_message}</p></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-section">Choose your response</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    x,y,z=st.columns(3)
+    if x.button("Monitor conditions",key=f"gm_{step}_monitor",use_container_width=True): hydro_guardian_choice("monitor"); st.rerun()
+    if y.button("Issue public warning",key=f"gm_{step}_warning",use_container_width=True): hydro_guardian_choice("warning"); st.rerun()
+    if z.button("Prepare evacuation information",key=f"gm_{step}_evacuate",use_container_width=True): hydro_guardian_choice("evacuate"); st.rerun()
+    st.caption("Game scenarios are fictional and educational. Real warnings and evacuation instructions come from authorized agencies.")
+
+
 def dam_map(location):
     lat,lon=LOCATIONS[location]
     m=folium.Map(location=[lat,lon],zoom_start=8,tiles="OpenStreetMap",control_scale=True)
@@ -550,7 +652,7 @@ if "authority" not in st.session_state: st.session_state.authority=False
 st.markdown('<div class="hs-brand"><div class="hs-brand-title"><span>HYDRO</span>SCOPE</div><div class="hs-brand-sub">PUBLIC FLOOD AWARENESS  /  DAM MONITORING  /  PREDICTIVE WATER INTELLIGENCE</div><div class="hs-status"><span class="hs-dot"></span>SYSTEM ONLINE</div></div>',unsafe_allow_html=True)
 st.write("")
 
-nav=["Home","Public Dashboard","Authority Access"]
+nav=["Home","Public Dashboard","Hydro Guardian","Authority Access"]
 if st.session_state.authority: nav += ["Prediction","Authority Console","Hydraulic Simulation"]
 cols=st.columns(len(nav))
 for c,name in zip(cols,nav):
@@ -563,21 +665,29 @@ st.divider()
 # HOME
 # ============================================================
 if st.session_state.page=="Home":
-    st.markdown('<div class="hs-section">A public view of changing water conditions</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    st.markdown('<div class="hs-note">HYDROSCOPE connects weather, reservoir conditions and downstream release-impact information into one visual public-safety interface. Detailed hydraulic failure scenarios remain restricted to authorized users.</div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-section">A living view of changing water conditions</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hs-note">Explore a water-themed public interface where the reservoir, gates and downstream flow visually respond to the current prototype dam state. Weather is live when the OpenWeather connection is available; dam parameters shown here are prototype data.</div>',unsafe_allow_html=True)
+    st.write("")
+    home_dam=DAM_DATABASE["Idukki Dam"]
+    st.markdown(interactive_dam_visual(home_dam),unsafe_allow_html=True)
+    st.write("")
+    a,b,c,d=st.columns(4)
+    a.metric("Water level",f'{home_dam["water_level"]:.1f} m')
+    b.metric("Rainfall input",f'{home_dam["rainfall"]:.0f} mm')
+    c.metric("Open shutters",f'{home_dam["open_shutters"]}/{home_dam["total_shutters"]}')
+    d.metric("Risk state",home_dam["risk"])
     st.write("")
     a,b,c=st.columns(3)
     with a:
-        st.markdown('<div class="hs-card"><div class="hs-card-label">01 / Public</div><div class="hs-card-title">Understand nearby dams</div><p class="hs-card-copy">View water level, rainfall, shutter status and potential controlled-release impact around a selected location.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-card"><div class="hs-card-label">01 / Explore</div><div class="hs-card-title">Inspect nearby dams</div><p class="hs-card-copy">Find monitored prototype dams around a Kerala location and open their 24–48 hour public release outlook.</p></div>',unsafe_allow_html=True)
     with b:
-        st.markdown('<div class="hs-card"><div class="hs-card-label">02 / Prediction</div><div class="hs-card-title">See what may happen next</div><p class="hs-card-copy">Combine current reservoir conditions with forecast rainfall to produce a prototype future water-level indicator.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-card"><div class="hs-card-label">02 / Understand</div><div class="hs-card-title">Watch the water story</div><p class="hs-card-copy">The reservoir, gates and downstream river are presented as one connected visual story.</p></div>',unsafe_allow_html=True)
     with c:
-        st.markdown('<div class="hs-card"><div class="hs-card-label">03 / Authority</div><div class="hs-card-title">Technical scenario analysis</div><p class="hs-card-copy">Authorized users can open the detailed hydraulic scenario workspace for depth, velocity and arrival-time analysis.</p></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hs-card"><div class="hs-card-label">03 / Learn</div><div class="hs-card-title">Play Hydro Guardian</div><p class="hs-card-copy">Test how early monitoring, public warnings and preparedness affect a fictional flood scenario.</p></div>',unsafe_allow_html=True)
     st.write("")
-    st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Kerala coverage</div><div class="hs-big">{len(LOCATIONS)} public search locations</div><div class="hs-click">All 14 districts represented through district headquarters and major towns.</div></div>',unsafe_allow_html=True)
-    st.write("")
-    if st.button("Open Public Dashboard",key="home_public",type="primary"):
-        st.session_state.page="Public Dashboard"; st.rerun()
+    x,y=st.columns(2)
+    if x.button("Explore Public Dashboard",key="home_public",type="primary"): st.session_state.page="Public Dashboard"; st.rerun()
+    if y.button("Play Hydro Guardian",key="home_game"): st.session_state.page="Hydro Guardian"; st.rerun()
 
 # ============================================================
 # PUBLIC DASHBOARD
@@ -605,6 +715,12 @@ elif st.session_state.page=="Public Dashboard":
     lat,lon=LOCATIONS[loc]
     st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Selected location</div><div class="hs-big">{loc}</div><div class="hs-click">{LOCATION_DISTRICTS[loc]} district  |  {lat:.4f}, {lon:.4f}</div></div>',unsafe_allow_html=True)
     st.write("")
+    preview_dams=nearby_dams(loc,120)
+    if preview_dams:
+        featured=preview_dams[0]
+        st.markdown('<div class="hs-section">Living Reservoir View</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+        st.markdown(interactive_dam_visual(featured),unsafe_allow_html=True)
+        st.caption(f'Visual focus: {featured["name"]}. The animation is a UI representation of prototype monitoring data, not a physical hydraulic model.')
 
     w=weather(lat,lon)
     if w["success"]:
@@ -678,6 +794,12 @@ elif st.session_state.page=="Public Dashboard":
     st.markdown('<div class="hs-section">Kerala Monitoring Map</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     st_folium(dam_map(loc),height=560,width=None,returned_objects=[])
     st.markdown('<div class="hs-note">HYDROSCOPE provides public awareness and safety information. Official warnings and evacuation instructions remain the responsibility of authorized agencies. Demo dam parameters are prototype data.</div>',unsafe_allow_html=True)
+
+# ============================================================
+# HYDRO GUARDIAN
+# ============================================================
+elif st.session_state.page=="Hydro Guardian":
+    hydro_game_page()
 
 # ============================================================
 # PREDICTION

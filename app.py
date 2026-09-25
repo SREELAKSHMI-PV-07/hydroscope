@@ -313,7 +313,7 @@ components.html(r"""
 # ============================================================
 # HYDROSCOPE DAM DATA
 # ============================================================
-# The 8 entries below are the current prototype hydraulic/forecast records.
+# The entries below are the prototype hydraulic/forecast records currently connected.
 # Their operating figures are demo values and are NOT live KSEB measurements.
 DAM_DATABASE={
 "Idukki Dam":{"district":"Idukki","lat":9.8494,"lon":76.9726,"water_level":88.0,"inflow":1800.0,"outflow":600.0,"rainfall":72.0,"total_shutters":8,"open_shutters":2,"opening_percent":20,"risk":"Moderate","status":"PROTOTYPE"},
@@ -402,6 +402,43 @@ KERALA_DAM_REGISTRY={
     "Banasura Sagar Dam":{"district":"Wayanad","operator":"KSEB","year":1979,"river":"Karamanthodu/Kabini system","lat":11.70,"lon":75.95},
     "Bhoothathankettu Dam":{"district":"Ernakulam","operator":"Kerala Irrigation Department","year":1962,"river":"Periyar","lat":10.15,"lon":76.68},
 }
+
+# Full authority-facing dam options. This registry is broader than the 8
+# demo reservoirs used by the public live-style dashboard.
+AUTHORITY_DAM_OPTIONS=sorted(KERALA_DAM_REGISTRY.keys())
+
+def authority_dam_record(name):
+    """Return registry metadata plus demo operational fields when available."""
+    meta=KERALA_DAM_REGISTRY[name]
+    base=DAM_DATABASE.get(name)
+    if base:
+        rec=base.copy()
+        rec.update({
+            "district":meta["district"],
+            "operator":meta["operator"],
+            "construction_year":meta["year"],
+            "river":meta["river"],
+        })
+        rec["data_available"]=True
+        return rec
+    return {
+        "district":meta["district"],
+        "operator":meta["operator"],
+        "construction_year":meta["year"],
+        "river":meta["river"],
+        "lat":meta["lat"],
+        "lon":meta["lon"],
+        "water_level":float("nan"),
+        "inflow":float("nan"),
+        "outflow":float("nan"),
+        "rainfall":float("nan"),
+        "total_shutters":0,
+        "open_shutters":0,
+        "opening_percent":0,
+        "risk":"Data unavailable",
+        "status":"REGISTRY ONLY",
+        "data_available":False,
+    }
 
 # Major Kerala locations: district headquarters plus major cities/towns used as public search points.
 # Coordinates are representative map points; they are not intended as precise user geolocation.
@@ -536,11 +573,38 @@ def distance_km(lat1,lon1,lat2,lon2):
     return 2*R*math.atan2(math.sqrt(a),math.sqrt(1-a))
 
 def nearby_dams(location,radius=120):
+    """Return all registered Kerala dams within the selected radius.
+
+    The registry contains the full dam reference set. Only the small demo subset
+    has prototype operational telemetry; registry-only dams are still searchable
+    and mappable, with their operational fields shown as unavailable.
+    """
     lat,lon=LOCATIONS[location]; out=[]
-    for name,d in DAM_DATABASE.items():
-        dist=distance_km(lat,lon,d["lat"],d["lon"])
+    for name,meta in KERALA_DAM_REGISTRY.items():
+        dist=distance_km(lat,lon,meta["lat"],meta["lon"])
         if dist<=radius:
-            x=d.copy(); x["name"]=name; x["distance"]=dist; out.append(x)
+            d=DAM_DATABASE.get(name,{})
+            x={
+                "name":name,
+                "district":meta["district"],
+                "operator":meta["operator"],
+                "construction_year":meta["year"],
+                "river":meta["river"],
+                "lat":meta["lat"],
+                "lon":meta["lon"],
+                "water_level":d.get("water_level",float("nan")),
+                "inflow":d.get("inflow",float("nan")),
+                "outflow":d.get("outflow",float("nan")),
+                "rainfall":d.get("rainfall",float("nan")),
+                "total_shutters":d.get("total_shutters",0),
+                "open_shutters":d.get("open_shutters",0),
+                "opening_percent":d.get("opening_percent",0),
+                "risk":d.get("risk","Data unavailable"),
+                "status":d.get("status","REGISTRY ONLY"),
+                "data_available":bool(d),
+                "distance":dist,
+            }
+            out.append(x)
     return sorted(out,key=lambda x:x["distance"])
 
 def location_options(district="All districts", search=""):
@@ -766,22 +830,25 @@ def public_release_assessment(d, scenario_shutters):
     }
 
 def interactive_dam_visual(dam):
-    pct=max(8,min(94,float(dam["water_level"])))
+    has_data=bool(dam.get("data_available",True)) and not pd.isna(dam.get("water_level",float("nan")))
+    pct=max(8,min(94,float(dam["water_level"]))) if has_data else 35
     gates=[]
-    total=int(dam.get("total_shutters",4))
-    opened=int(dam.get("open_shutters",0))
+    total=int(dam.get("total_shutters",4)) if has_data else 4
+    opened=int(dam.get("open_shutters",0)) if has_data else 0
     for i in range(total):
         gates.append('<span class="hs-gate open"></span>' if i < opened else '<span class="hs-gate"></span>')
     name=dam.get("name","Idukki Dam")
-    return f'''<div class="hs-dam-scene">
+    level_text=f'{float(dam["water_level"]):.1f} m' if has_data else 'Telemetry unavailable'
+    level_sub='current prototype level' if has_data else 'registry reference only'
+    return f"""<div class="hs-dam-scene">
       <div class="hs-dam-sky"></div><div class="hs-moon"></div>
       <div class="hs-mountain m1"></div><div class="hs-mountain m2"></div>
       <div class="hs-scene-label"><div class="small">Interactive reservoir view</div><div class="big">{name}</div></div>
-      <div class="hs-scene-level"><strong>{float(dam["water_level"]):.1f} m</strong><span>current prototype level</span></div>
+      <div class="hs-scene-level"><strong>{level_text}</strong><span>{level_sub}</span></div>
       <div class="hs-reservoir"><div class="hs-waterline"></div><div class="hs-reservoir-fill" style="height:{pct}%"></div></div>
       <div class="hs-dam-wall"></div><div class="hs-gates">{''.join(gates)}</div>
       <div class="hs-river"></div>
-    </div>'''
+    </div>"""
 
 
 def hydro_run_page():
@@ -836,12 +903,29 @@ def dam_map(location):
     m=folium.Map(location=[lat,lon],zoom_start=8,tiles="OpenStreetMap",control_scale=True)
     folium.Circle([lat,lon],radius=120000,color="#25b9ff",fill=True,fill_opacity=.05).add_to(m)
     folium.Marker([lat,lon],tooltip=location,icon=folium.Icon(color="blue",icon="info-sign")).add_to(m)
-    for name,d in DAM_DATABASE.items():
-        dist=distance_km(lat,lon,d["lat"],d["lon"])
-        if dist>120: continue
-        c="red" if d["risk"]=="High" else "orange" if d["risk"]=="Moderate" else "green"
-        txt=f"<b>{name}</b><br>Water level: {d['water_level']:.1f}<br>Shutters: {d['open_shutters']}/{d['total_shutters']}<br>Risk: {d['risk']}<br>Distance: {dist:.1f} km"
-        folium.Marker([d["lat"],d["lon"]],tooltip=name,popup=folium.Popup(txt,max_width=260),icon=folium.Icon(color=c,icon="tint")).add_to(m)
+    # Plot the complete registered Kerala dam set, not only the demo telemetry subset.
+    for name,meta in KERALA_DAM_REGISTRY.items():
+        dist=distance_km(lat,lon,meta["lat"],meta["lon"])
+        d=DAM_DATABASE.get(name,{})
+        risk=d.get("risk","Data unavailable")
+        c="red" if risk=="High" else "orange" if risk=="Moderate" else "green" if risk=="Normal" else "blue"
+        if d:
+            txt=(f"<b>{name}</b><br>District: {meta['district']}<br>"
+                 f"Operator: {meta['operator']}<br>River: {meta['river']}<br>"
+                 f"Water level: {d['water_level']:.1f}<br>"
+                 f"Shutters: {d['open_shutters']}/{d['total_shutters']}<br>"
+                 f"Risk: {risk}<br>Distance: {dist:.1f} km")
+        else:
+            txt=(f"<b>{name}</b><br>District: {meta['district']}<br>"
+                 f"Operator: {meta['operator']}<br>River: {meta['river']}<br>"
+                 f"Completion year: {meta['year']}<br>"
+                 f"Operational telemetry: registry only<br>Distance: {dist:.1f} km")
+        folium.Marker(
+            [meta["lat"],meta["lon"]],
+            tooltip=name,
+            popup=folium.Popup(txt,max_width=300),
+            icon=folium.Icon(color=c,icon="tint")
+        ).add_to(m)
     return m
 
 # ============================================================
@@ -1011,7 +1095,13 @@ elif st.session_state.page=="Public Dashboard":
             with cards[i%3]:
                 active=st.session_state.get("public_dam_focus")==d["name"]
                 border='border:1px solid rgba(58,210,255,.85);box-shadow:0 0 24px rgba(35,185,255,.18);' if active else ''
-                st.markdown(f'<div class="hs-card" style="{border}"><span class="hs-pill">{d["risk"]}  /  {d["distance"]:.1f} km</span><div class="hs-card-title" style="margin-top:12px">{d["name"]}</div><div class="hs-card-copy">Water level <b>{d["water_level"]:.1f}</b>  |  Shutters <b>{d["open_shutters"]}/{d["total_shutters"]}</b></div><div class="hs-card-copy">Rainfall input <b>{d["rainfall"]:.0f} mm</b></div></div>',unsafe_allow_html=True)
+                if d.get("data_available"):
+                    card_copy=(f'Water level <b>{d["water_level"]:.1f} m</b>  |  Shutters <b>{d["open_shutters"]}/{d["total_shutters"]}</b><br>'
+                               f'Rainfall input <b>{d["rainfall"]:.0f} mm</b>')
+                else:
+                    card_copy=(f'River <b>{d["river"]}</b>  |  Operator <b>{d["operator"]}</b><br>'
+                               f'Operational telemetry <b>Registry only</b>')
+                st.markdown(f'<div class="hs-card" style="{border}"><span class="hs-pill">{d["risk"]}  /  {d["distance"]:.1f} km</span><div class="hs-card-title" style="margin-top:12px">{d["name"]}</div><div class="hs-card-copy">{card_copy}</div></div>',unsafe_allow_html=True)
                 if st.button("Inspect",key=f"inspect_{d['name']}",use_container_width=True):
                     st.session_state.public_dam_focus_pending=d["name"]
                     st.rerun()
@@ -1020,34 +1110,57 @@ elif st.session_state.page=="Public Dashboard":
         if selected in dam_names:
             focus=next(d for d in dams if d["name"]==selected)
             st.markdown('<div class="hs-section">Dam Release Outlook</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-            st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Public inspection</div><div class="hs-big">{focus["name"]}</div><div class="hs-click">Current level {focus["water_level"]:.1f}  |  Current shutters {focus["open_shutters"]}/{focus["total_shutters"]}  |  Distance {focus["distance"]:.1f} km</div></div>',unsafe_allow_html=True)
-
-            outlook=release_outlook(focus)
-            if outlook["success"]:
-                x,y,z,q=st.columns(4)
-                x.metric("24 h forecast rain",f"{outlook['rain24']:.1f} mm")
-                y.metric("48 h forecast rain",f"{outlook['rain48']:.1f} mm")
-                z.metric("24 h projected level",f"{outlook['level24']:.1f}")
-                q.metric("48 h projected level",f"{outlook['level48']:.1f}")
-
-                if outlook["flag"]=="ACTIVE":
-                    st.warning(f"{outlook['outlook']}: the prototype data currently shows {focus['open_shutters']} of {focus['total_shutters']} shutters open.")
-                elif outlook["flag"]=="WATCH":
-                    st.warning(outlook["outlook"]+": review the official dam status and warnings before making safety decisions.")
-                else:
-                    st.success(outlook["outlook"]+" for the next 24–48 hours based on the prototype inputs.")
-
-                st.markdown(f'<div class="hs-card"><div class="hs-card-label">What this means for the public</div><div class="hs-card-title">{outlook["outlook"]}</div><p class="hs-card-copy">{outlook["detail"]}</p></div>',unsafe_allow_html=True)
-
-                zones=DOWNSTREAM_ZONES.get(focus["name"],["Downstream river corridor","Nearby low-lying areas"])
-                st.markdown(f'<div class="hs-card"><div class="hs-card-label">If controlled release occurs</div><div class="hs-card-title">Downstream areas to monitor</div><p class="hs-card-copy">{" • ".join(zones)}</p></div>',unsafe_allow_html=True)
-                st.caption("This is a prototype public-awareness indicator. It does not predict an operator's decision or issue an official evacuation warning. Production use should use the dam's approved rule curve, official gate status, catchment forecast and Emergency Action Plan.")
+            if not focus.get("data_available"):
+                st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Public inspection</div><div class="hs-big">{focus["name"]}</div><div class="hs-click">{focus["district"]}  |  {focus["river"]}  |  {focus["operator"]}  |  Distance {focus["distance"]:.1f} km</div></div>',unsafe_allow_html=True)
+                st.info("This dam is present in the Kerala registry, but verified operational telemetry is not connected to the prototype. Public release outlook is therefore unavailable for this dam.")
             else:
-                st.info(f"Release outlook unavailable: {outlook['error']}")
+                st.markdown(f'<div class="hs-interactive"><div class="hs-mini">Public inspection</div><div class="hs-big">{focus["name"]}</div><div class="hs-click">Current level {focus["water_level"]:.1f}  |  Current shutters {focus["open_shutters"]}/{focus["total_shutters"]}  |  Distance {focus["distance"]:.1f} km</div></div>',unsafe_allow_html=True)
+
+                outlook=release_outlook(focus)
+                if outlook["success"]:
+                    x,y,z,q=st.columns(4)
+                    x.metric("24 h forecast rain",f"{outlook['rain24']:.1f} mm")
+                    y.metric("48 h forecast rain",f"{outlook['rain48']:.1f} mm")
+                    z.metric("24 h projected level",f"{outlook['level24']:.1f}")
+                    q.metric("48 h projected level",f"{outlook['level48']:.1f}")
+
+                    if outlook["flag"]=="ACTIVE":
+                        st.warning(f"{outlook['outlook']}: the prototype data currently shows {focus['open_shutters']} of {focus['total_shutters']} shutters open.")
+                    elif outlook["flag"]=="WATCH":
+                        st.warning(outlook["outlook"]+": review the official dam status and warnings before making safety decisions.")
+                    else:
+                        st.success(outlook["outlook"]+" for the next 24–48 hours based on the prototype inputs.")
+
+                    st.markdown(f'<div class="hs-card"><div class="hs-card-label">What this means for the public</div><div class="hs-card-title">{outlook["outlook"]}</div><p class="hs-card-copy">{outlook["detail"]}</p></div>',unsafe_allow_html=True)
+
+                    zones=DOWNSTREAM_ZONES.get(focus["name"],["Downstream river corridor","Nearby low-lying areas"])
+                    st.markdown(f'<div class="hs-card"><div class="hs-card-label">If controlled release occurs</div><div class="hs-card-title">Downstream areas to monitor</div><p class="hs-card-copy">{" • ".join(zones)}</p></div>',unsafe_allow_html=True)
+                    st.caption("This is a prototype public-awareness indicator. It does not predict an operator's decision or issue an official evacuation warning. Production use should use the dam's approved rule curve, official gate status, catchment forecast and Emergency Action Plan.")
+                else:
+                    st.info(f"Release outlook unavailable: {outlook['error']}")
         else:
             st.markdown('<div class="hs-note">Select Inspect on a dam to open its 24–48 hour public release outlook. Detailed flood-depth, velocity, breach and arrival-time simulation is restricted to authorized users.</div>',unsafe_allow_html=True)
     else:
-        st.info("No monitored demo dams are within this radius. The public interface is ready for additional verified reservoir feeds.")
+        st.info("No registered Kerala dams are within this radius. Increase the monitoring radius or select a dam from the All Kerala Dams directory.")
+
+    st.markdown('<div class="hs-section">All Kerala Dams</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
+    public_all_name=st.selectbox("Select any registered Kerala dam",AUTHORITY_DAM_OPTIONS,key="public_all_dam")
+    public_all_meta=KERALA_DAM_REGISTRY[public_all_name]
+    public_all_demo=DAM_DATABASE.get(public_all_name)
+    if public_all_demo:
+        a,b,c,d4=st.columns(4)
+        a.metric("District",public_all_meta["district"])
+        b.metric("Operator",public_all_meta["operator"])
+        c.metric("River",public_all_meta["river"])
+        d4.metric("Data status","PROTOTYPE")
+        st.caption(f"Water level {public_all_demo['water_level']:.1f} m  ·  Shutters {public_all_demo['open_shutters']}/{public_all_demo['total_shutters']}  ·  Completion year {public_all_meta['year']}")
+    else:
+        a,b,c,d4=st.columns(4)
+        a.metric("District",public_all_meta["district"])
+        b.metric("Operator",public_all_meta["operator"])
+        c.metric("River",public_all_meta["river"])
+        d4.metric("Data status","REGISTRY ONLY")
+        st.caption(f"Completion year {public_all_meta['year']}  ·  Verified operational telemetry is not connected for this dam in the current prototype.")
 
     st.markdown('<div class="hs-section">Kerala Monitoring Map</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     st_folium(dam_map(loc),height=560,width=None,returned_objects=[])
@@ -1067,7 +1180,31 @@ elif st.session_state.page=="Prediction":
         st.session_state.page="Public Dashboard"
         st.rerun()
     st.markdown('<div class="hs-section">Water-Level Prediction</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
-    name=st.selectbox("Select Dam",list(DAM_DATABASE),key="pred_dam"); dam=DAM_DATABASE[name]
+    name=st.selectbox("Select Dam",AUTHORITY_DAM_OPTIONS,key="pred_dam")
+    dam=authority_dam_record(name)
+    if not dam["data_available"]:
+        meta=KERALA_DAM_REGISTRY[name]
+        st.info(f"{name} is present in the Kerala authority registry, but verified reservoir telemetry is not connected to this prototype. Registry source: {meta['operator']}.")
+        a,b,c,d4=st.columns(4)
+        a.metric("District",meta["district"])
+        b.metric("Operator",meta["operator"])
+        c.metric("Completion year",str(meta["year"]))
+        d4.metric("Data status","REGISTRY ONLY")
+        st.caption(f"River: {meta['river']}  ·  Registry coordinates: {meta['lat']:.4f}, {meta['lon']:.4f}")
+        f=forecast(dam["lat"],dam["lon"])
+        if f["success"] and not f["data"].empty:
+            s=rainfall_summary(f["data"])
+            st.subheader("Weather forecast available")
+            a,b,c=st.columns(3)
+            a.metric("6h rainfall",f"{s['rain_6h']} mm")
+            b.metric("12h rainfall",f"{s['rain_12h']} mm")
+            c.metric("24h rainfall",f"{s['rain_24h']} mm")
+            fig=go.Figure(go.Bar(x=f["data"]["datetime"],y=f["data"]["rainfall"]))
+            fig.update_layout(template="plotly_dark",height=350,title="Forecast Rainfall",xaxis_title="Time",yaxis_title="mm / 3h")
+            st.plotly_chart(fig,use_container_width=True)
+        else:
+            st.warning("Weather forecast is currently unavailable for this registry location.")
+        st.stop()
     f=forecast(dam["lat"],dam["lon"])
     if not f["success"]: st.error(f["error"]); st.stop()
     s=rainfall_summary(f["data"])
@@ -1105,7 +1242,18 @@ elif st.session_state.page=="Authority Console":
         st.session_state.page="Authority Access"; st.rerun()
     st.markdown('<div class="hs-section">Authority Console</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     st.markdown(f'<div class="hs-note">Verified session: <b>{st.session_state.authority_id}</b>  /  {st.session_state.authority_email}</div>',unsafe_allow_html=True)
-    name=st.selectbox("Dam",list(DAM_DATABASE),key="auth_dam"); dam=DAM_DATABASE[name]
+    name=st.selectbox("Dam",AUTHORITY_DAM_OPTIONS,key="auth_dam")
+    dam=authority_dam_record(name)
+    if not dam["data_available"]:
+        meta=KERALA_DAM_REGISTRY[name]
+        a,b,c,e=st.columns(4)
+        a.metric("District",meta["district"])
+        b.metric("Operator",meta["operator"])
+        c.metric("Completion year",str(meta["year"]))
+        e.metric("Data status","REGISTRY ONLY")
+        st.caption(f"River: {meta['river']}  ·  Registry coordinates: {meta['lat']:.4f}, {meta['lon']:.4f}")
+        st.markdown('<div class="hs-note">Verified reservoir telemetry is not connected for this dam in the current prototype. Operational values must come from an authorised data feed before they are displayed.</div>',unsafe_allow_html=True)
+        st.stop()
     a,b,c,e=st.columns(4)
     a.metric("Water level",dam["water_level"])
     b.metric("Inflow",f"{dam['inflow']:.0f} m³/s")
@@ -1203,7 +1351,17 @@ elif st.session_state.page=="Hydraulic Simulation":
         st.session_state.page="Authority Access"; st.rerun()
     st.markdown('<div class="hs-section">Authority Hydraulic Simulation</div><div class="hs-section-line"></div>',unsafe_allow_html=True)
     st.markdown('<div class="hs-note">Restricted technical scenario analysis. The current solver is an educational prototype and is not an operational flood forecast.</div>',unsafe_allow_html=True)
-    name=st.selectbox("Dam",list(DAM_DATABASE),key="hyd_dam"); dam=DAM_DATABASE[name]
+    name=st.selectbox("Dam",AUTHORITY_DAM_OPTIONS,key="hyd_dam")
+    dam=authority_dam_record(name)
+    if not dam["data_available"]:
+        meta=KERALA_DAM_REGISTRY[name]
+        st.info(f"{name} is in the authority registry, but reservoir inputs required by the hydraulic prototype are not connected yet.")
+        a,b,c=st.columns(3)
+        a.metric("District",meta["district"])
+        b.metric("Operator",meta["operator"])
+        c.metric("Data status","REGISTRY ONLY")
+        st.caption("The hydraulic solver is enabled only when verified reservoir/geometry inputs are available. Do not interpret registry presence as a live simulation capability.")
+        st.stop()
     st.markdown('<div class="hs-card"><div class="hs-card-label">Scenario control</div><div class="hs-card-title">Hypothetical breach fraction</div><p class="hs-card-copy">Choose the fraction used by this prototype scenario model.</p></div>',unsafe_allow_html=True)
     breach=st.slider("Breach fraction",0.10,0.90,0.55,0.05,label_visibility="collapsed")
     st.caption(f"Selected scenario: {breach:.0%}")

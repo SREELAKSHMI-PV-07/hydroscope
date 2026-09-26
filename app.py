@@ -1,5 +1,5 @@
 import math
-from datetime import datetime, timezone
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import requests
@@ -7,148 +7,169 @@ import plotly.graph_objects as go
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-import streamlit.components.v1 as components
 
-st.set_page_config(page_title='HYDROSCOPE', page_icon='🌊', layout='wide', initial_sidebar_state='collapsed')
+st.set_page_config(page_title='HYDROSCOPE', page_icon='🌊', layout='wide')
 
 st.markdown('''<style>
-.stApp{background:radial-gradient(circle at 10% 10%,rgba(25,120,160,.20),transparent 28%),linear-gradient(135deg,#06131b,#081b26 48%,#051017);color:#eaf8ff}
-header[data-testid="stHeader"]{background:transparent}.block-container{max-width:1450px;padding-top:1rem}
-.brand{font-size:2.25rem;font-weight:800;letter-spacing:2px}.tagline{color:#8fc9df;margin-top:-7px;margin-bottom:15px}
-.status{display:inline-block;padding:6px 12px;border-radius:999px;font-size:.78rem;font-weight:700;background:rgba(255,193,7,.12);border:1px solid rgba(255,193,7,.25);color:#ffd76a}
-.live{display:inline-block;padding:6px 12px;border-radius:999px;font-size:.78rem;font-weight:700;background:rgba(0,210,140,.12);border:1px solid rgba(0,210,140,.25);color:#73efbe}
-.title{font-size:1.45rem;font-weight:750;margin:8px 0 4px}.note{color:#91aeb9;font-size:.82rem}.footer{margin-top:30px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);color:#71919e;font-size:.78rem;text-align:center}
-div.stButton>button{border-radius:12px;border:1px solid rgba(130,210,240,.16);background:rgba(255,255,255,.045);color:#eaf8ff;min-height:42px;font-weight:650}div.stButton>button:hover{border-color:rgba(100,220,255,.55);background:rgba(50,170,210,.13)}
-div[data-testid="stMetric"]{background:rgba(255,255,255,.035);border:1px solid rgba(160,225,255,.10);border-radius:14px;padding:10px}
+.stApp{background:radial-gradient(circle at 10% 10%,rgba(0,180,255,.13),transparent 30%),linear-gradient(135deg,#07111f,#081827 50%,#06101b);color:#eef7ff}
+.block-container{padding-top:1.1rem;max-width:1450px}.hero{padding:1.25rem 1.5rem;border:1px solid rgba(255,255,255,.13);border-radius:22px;background:rgba(255,255,255,.055);margin-bottom:1rem}.hero-title{font-size:2.35rem;font-weight:800;letter-spacing:.08em}.hero-subtitle{color:#a9c7dd}.glass{padding:1rem;border:1px solid rgba(255,255,255,.1);border-radius:18px;background:rgba(255,255,255,.045);margin-bottom:.8rem}.small-muted{color:#93adc0;font-size:.82rem}.section-title{font-size:1.4rem;font-weight:750;margin:.6rem 0 .8rem}div.stButton>button{border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);color:#eaf7ff;min-height:42px}[data-testid=stMetric]{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:.7rem}.footer{text-align:center;color:#7894a8;font-size:.78rem;padding:1.5rem 0}
 </style>''', unsafe_allow_html=True)
 
 DAMS={
-'Idukki Dam':(9.8494,76.9726,88,1800,600,72,8,2,20,60,.84),
-'Idamalayar Dam':(10.2068,76.7032,72,920,310,48,4,1,15,48,.70),
-'Malankara Dam':(9.7804,76.8787,67,210,95,41,6,1,10,18,.64),
-'Bhoothathankettu':(10.1457,76.6788,61,160,80,36,5,1,10,15,.58),
-'Pamba Dam':(9.3805,76.9275,64,450,170,39,6,1,12,35,.61),
-'Kakki Dam':(9.35,77.0,70,520,190,44,4,1,15,40,.68),
-'Neyyar Dam':(8.535,77.145,58,190,75,31,4,0,0,20,.55),
-'Banasura Sagar Dam':(11.7,75.95,63,330,120,52,4,1,10,32,.60),}
-LOCS={'Kochi':(9.9312,76.2673),'Idukki':(9.85,76.97),'Munnar':(10.0889,77.0595),'Kothamangalam':(10.058,76.629),'Thodupuzha':(9.895,76.718),'Kottayam':(9.5916,76.5222),'Pathanamthitta':(9.2648,76.787),'Alappuzha':(9.4981,76.3388),'Thiruvananthapuram':(8.5241,76.9366),'Wayanad':(11.6854,76.132)}
+'Idukki Dam':dict(lat=9.8494,lon=76.9726,water_level=88.,inflow=1800.,outflow=600.,rainfall=72.,shutters=8,open_shutters=2,opening_pct=20.,warning_level=89.,critical_level=91.,capacity_level=92.,surface_area_km2=60.),
+'Idamalayar Dam':dict(lat=10.2068,lon=76.7032,water_level=72.,inflow=920.,outflow=310.,rainfall=48.,shutters=4,open_shutters=1,opening_pct=15.,warning_level=75.,critical_level=77.,capacity_level=78.,surface_area_km2=28.),
+'Malankara Dam':dict(lat=9.7804,lon=76.8787,water_level=67.,inflow=210.,outflow=95.,rainfall=41.,shutters=6,open_shutters=1,opening_pct=10.,warning_level=69.,critical_level=71.,capacity_level=72.,surface_area_km2=12.),
+'Bhoothathankettu':dict(lat=10.1457,lon=76.6788,water_level=61.,inflow=160.,outflow=80.,rainfall=36.,shutters=5,open_shutters=1,opening_pct=10.,warning_level=63.,critical_level=65.,capacity_level=66.,surface_area_km2=8.),
+'Pamba Dam':dict(lat=9.3805,lon=76.9275,water_level=64.,inflow=450.,outflow=170.,rainfall=39.,shutters=6,open_shutters=1,opening_pct=12.,warning_level=66.,critical_level=68.,capacity_level=69.,surface_area_km2=17.),
+'Kakki Dam':dict(lat=9.35,lon=77.0,water_level=70.,inflow=520.,outflow=190.,rainfall=44.,shutters=4,open_shutters=1,opening_pct=15.,warning_level=72.,critical_level=74.,capacity_level=75.,surface_area_km2=20.),
+'Neyyar Dam':dict(lat=8.535,lon=77.145,water_level=58.,inflow=190.,outflow=75.,rainfall=31.,shutters=4,open_shutters=0,opening_pct=0.,warning_level=61.,critical_level=63.,capacity_level=64.,surface_area_km2=10.),
+'Banasura Sagar Dam':dict(lat=11.7,lon=75.95,water_level=63.,inflow=330.,outflow=120.,rainfall=52.,shutters=4,open_shutters=1,opening_pct=10.,warning_level=65.,critical_level=67.,capacity_level=68.,surface_area_km2=18.)}
+LOCATIONS={'Kochi':(9.9312,76.2673),'Idukki':(9.85,76.97),'Munnar':(10.0889,77.0595),'Kothamangalam':(10.058,76.629),'Thodupuzha':(9.895,76.718),'Kottayam':(9.5916,76.5222),'Pathanamthitta':(9.2648,76.787),'Alappuzha':(9.4981,76.3388),'Thiruvananthapuram':(8.5241,76.9366),'Wayanad':(11.6854,76.132)}
 
-def hav(a,b,c,d):
- r=6371; p1=math.radians(a);p2=math.radians(c);dp=math.radians(c-a);dl=math.radians(d-b)
- x=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
- return 2*r*math.asin(math.sqrt(x))
+if 'page' not in st.session_state: st.session_state.page='Dashboard'
+if 'tick' not in st.session_state: st.session_state.tick=0
+if 'game' not in st.session_state: st.session_state.game=None
+if 'game_msg' not in st.session_state: st.session_state.game_msg=''
 
-def nearby(loc):
- a,b=LOCS[loc]; return sorted([(n,hav(a,b,d[0],d[1])) for n,d in DAMS.items() if hav(a,b,d[0],d[1])<=120],key=lambda x:x[1])
+def haversine(a,b,c,d):
+    R=6371.; p1,p2=math.radians(a),math.radians(c); dp=math.radians(c-a); dl=math.radians(d-b)
+    x=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+    return 2*R*math.asin(math.sqrt(x))
 
-def key():
- try:return st.secrets['OPENWEATHER_API_KEY']
- except:return ''
+def nearby(location,radius=120):
+    la,lo=LOCATIONS[location]; out=[]
+    for name,d in DAMS.items():
+        x=dict(d); x['name']=name; x['distance_km']=haversine(la,lo,d['lat'],d['lon']);
+        if x['distance_km']<=radius: out.append(x)
+    return sorted(out,key=lambda x:x['distance_km'])
+
+def risk(level,d): return 'High' if level>=d['critical_level'] else ('Moderate' if level>=d['warning_level'] else 'Normal')
+def icon(r): return {'Normal':'🟢','Moderate':'🟠','High':'🔴'}[r]
+
+def simulate(d,rain,steps=1,dt_hours=1):
+    s=dict(d); area=max(s['surface_area_km2'],.1)*1e6; level=s['water_level']; inflow=s['inflow']; outflow=s['outflow']
+    rain_factor=1+min(max(rain,0)/250,1.2)
+    for _ in range(steps):
+        inflow=.72*inflow+.28*inflow*rain_factor
+        r=risk(level,s); mult={'Normal':1.,'Moderate':1.12,'High':1.28}[r]; out=outflow*mult
+        dh=np.clip(((inflow-out)*dt_hours*3600)/area,-.35,.35); level+=float(dh)
+    s.update(water_level=round(level,3),inflow=round(inflow,1),outflow=round(out,1),risk=risk(level,s))
+    return s
+
+def prediction(d,rains):
+    s=dict(d); rows=[]
+    for i,r in enumerate(rains,1):
+        s=simulate(s,r,1,3); rows.append([i,r,s['water_level'],s['inflow'],s['outflow'],s['risk']])
+    return pd.DataFrame(rows,columns=['step','rainfall','water_level','inflow','outflow','risk'])
+
+def flood_scenario(d):
+    f=np.clip((d['water_level']-d['warning_level'])/max(d['capacity_level']-d['warning_level'],.1),0,1.5); frac=d['water_level']/d['capacity_level']
+    peak=max(100,d['inflow']*(1.8+2.2*frac)*(1+.35*f)); arrival=max(10,90-35*frac-15*f)
+    population=int(np.clip(5000+peak*9+d['surface_area_km2']*1200,5000,2500000))
+    t=np.linspace(0,max(arrival*2.5,120),100); wave=peak*np.exp(-((t-arrival)**2)/(2*max(arrival*.3,8)**2))
+    return peak,arrival,population,t,wave
 
 @st.cache_data(ttl=600)
-def weather(lat,lon,k):
- if not k:return {'ok':False,'error':'OPENWEATHER_API_KEY is not configured.'}
- try:
-  r=requests.get('https://api.openweathermap.org/data/2.5/weather',params={'lat':lat,'lon':lon,'appid':k,'units':'metric'},timeout=10);x=r.json()
-  if r.status_code!=200:return {'ok':False,'error':x.get('message','Weather request failed')}
-  return {'ok':True,'temp':x['main']['temp'],'humidity':x['main']['humidity'],'wind':x['wind'].get('speed',0),'rain':x.get('rain',{}).get('1h',0),'description':x['weather'][0]['description'].title(),'city':x.get('name','Selected location')}
- except Exception as e:return {'ok':False,'error':str(e)}
+def weather(lat,lon,key):
+    a=requests.get('https://api.openweathermap.org/data/2.5/weather',params={'lat':lat,'lon':lon,'appid':key,'units':'metric'},timeout=10); a.raise_for_status()
+    b=requests.get('https://api.openweathermap.org/data/2.5/forecast',params={'lat':lat,'lon':lon,'appid':key,'units':'metric'},timeout=10); b.raise_for_status(); return a.json(),b.json()
 
-@st.cache_data(ttl=600)
-def forecast(lat,lon,k):
- if not k:return {'ok':False,'points':[],'error':'API key unavailable'}
- try:
-  r=requests.get('https://api.openweathermap.org/data/2.5/forecast',params={'lat':lat,'lon':lon,'appid':k,'units':'metric'},timeout=10);x=r.json()
-  if r.status_code!=200:return {'ok':False,'points':[],'error':x.get('message','Forecast failed')}
-  pts=[]
-  for q in x['list']:
-   pts.append({'dt':datetime.fromtimestamp(q['dt'],timezone.utc),'rain':q.get('rain',{}).get('3h',0)})
-  return {'ok':True,'points':pts}
- except Exception as e:return {'ok':False,'points':[],'error':str(e)}
+def map_view(location,selected):
+    la,lo=LOCATIONS[location]; m=folium.Map([la,lo],zoom_start=8,tiles='OpenStreetMap')
+    folium.Circle([la,lo],radius=120000,color='#38bdf8',fill=True,fill_opacity=.04).add_to(m)
+    folium.Marker([la,lo],tooltip=f'User location: {location}',icon=folium.Icon(color='blue',icon='user')).add_to(m)
+    for x in nearby(location):
+        d=DAMS[x['name']]; r=risk(d['water_level'],d); color={'Normal':'green','Moderate':'orange','High':'red'}[r]
+        folium.Marker([d['lat'],d['lon']],tooltip=f'{icon(r)} {x["name"]}',popup=f'<b>{x["name"]}</b><br>Risk: {r}<br>Water level: {d["water_level"]} m<br>Inflow: {d["inflow"]:.0f} m³/s<br>Outflow: {d["outflow"]:.0f} m³/s<br>Shutters: {d["open_shutters"]}/{d["shutters"]}<br><i>Prototype reservoir data</i>',icon=folium.Icon(color=color,icon='tint',prefix='fa')).add_to(m)
+        if x['name']==selected: folium.Circle([d['lat'],d['lon']],radius=7000,color='#fbbf24',fill=False,weight=3).add_to(m)
+    return m
 
-def model(d,w,f):
- lat,lon,h,qin,qout,base_rain,sh,op,opening,area,cap=d
- rain=w.get('rain',base_rain) if w.get('ok') else base_rain
- next24=sum(x['rain'] for x in f.get('points',[])[:8])
- mult=1+min(1.2,(max(0,rain)+.35*next24)/120)
- inflow=qin*mult
- outflow=qout*(1+.25*max(0,(cap*100-70)/30))
- dt=3600; dv=(inflow-outflow)*dt; dh=dv/(area*1e6)
- h1=h+dh; h6=h+6*dh; pct=min(110,max(0,cap*100+(h6-h)*2))
- risk='High' if pct>=92 or rain>=100 or inflow/qin>=1.65 else 'Moderate' if pct>=78 or rain>=50 or inflow/qin>=1.25 else 'Normal'
- breach=min(.85,max(.15,.20+.45*max(0,pct-70)/30)); peak=max(500,inflow*(1.5+3*breach)); arrival=max(8,95-55*breach); pop=int(15000+95000*breach+180*max(0,pct-70))
- return {'lat':lat,'lon':lon,'h':h,'inflow':inflow,'outflow':outflow,'rain':rain,'next24':next24,'sh':sh,'op':op,'opening':opening,'h1':h1,'h6':h6,'pct':pct,'risk':risk,'breach':breach,'peak':peak,'arrival':arrival,'pop':pop,'area':area}
+st.markdown('<div class="hero"><div class="hero-title">🌊 HYDROSCOPE</div><div class="hero-subtitle">Public Dam Monitoring • Water Prediction • Flood-Risk Awareness</div></div>',unsafe_allow_html=True)
+nav=['Dashboard','Dam Monitoring','Prediction','Flood Simulation','Public Safety','Hydro Challenge']
+cols=st.columns(len(nav))
+for c,n in zip(cols,nav):
+    with c:
+        if st.button(n,key='nav_'+n,use_container_width=True): st.session_state.page=n; st.rerun()
 
-def dam_map(loc,selected):
- la,lo=LOCS[loc];m=folium.Map([la,lo],zoom_start=8,tiles='OpenStreetMap');folium.Circle([la,lo],120000,color='#36c8ef',fill=True,fill_opacity=.03).add_to(m);folium.Marker([la,lo],tooltip=f'User location: {loc}',icon=folium.Icon(color='blue',icon='user',prefix='fa')).add_to(m)
- colors={'Normal':'green','Moderate':'orange','High':'red'}
- for n,d in DAMS.items():
-  dist=hav(la,lo,d[0],d[1])
-  if dist>120:continue
-  folium.Marker([d[0],d[1]],tooltip=('★ ' if n==selected else '')+n,popup=f'<b>{n}</b><br>Distance: {dist:.1f} km<br>Water level: {d[2]:.1f} m<br><b>SIMULATION MODE</b>',icon=folium.Icon(color=('orange' if d[10]>=.78 else 'green'),icon='tint',prefix='fa')).add_to(m)
- return m
+location=st.selectbox('📍 Select your location',list(LOCATIONS),index=list(LOCATIONS).index('Idukki'))
+near=nearby(location)
+if not near: st.error('No prototype dams found within the monitoring radius.'); st.stop()
+selected=st.selectbox('💧 Select a nearby dam',[x['name'] for x in near])
+d=dict(DAMS[selected])
+if st.session_state.tick: d=simulate(d,max(d['rainfall'],5+st.session_state.tick*2),st.session_state.tick,1)
 
-def level_chart(s):
- x=np.arange(7);y=np.linspace(s['h'],s['h6'],7);f=go.Figure(go.Scatter(x=x,y=y,mode='lines+markers',name='Modelled level'));f.update_layout(height=340,margin=dict(l=10,r=10,t=30,b=10),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',xaxis_title='Hours',yaxis_title='Level (m)',font=dict(color='#d9f3ff'));return f
+key=st.secrets.get('OPENWEATHER_API_KEY',None)
+current=forecast=None; weather_error=None
+if key:
+    try: current,forecast=weather(*LOCATIONS[location],key)
+    except Exception as e: weather_error=str(e)
 
-def safety(r):
- return {'High':'High-risk simulation condition. Follow official emergency instructions, move to safer/elevated locations when instructed, and avoid flooded roads and waterways.','Moderate':'Moderate simulation condition. Monitor official alerts, avoid unnecessary travel near waterways, and keep an emergency plan ready.','Normal':'Normal simulation condition. Continue monitoring weather and official emergency information.'}[r]
+rain_live=float(current.get('rain',{}).get('1h',0)) if current else d['rainfall']
 
-if 'page' not in st.session_state:st.session_state.page='Home'
-pages=['Home','Dam Monitor','Prediction','Flood Simulation','Public Safety','Flood Ready']
-st.markdown('<div class="brand">🌊 HYDROSCOPE</div><div class="tagline">Public Dam Monitoring • Water Prediction • Flood-Risk Awareness</div>',unsafe_allow_html=True)
-cols=st.columns(len(pages))
-for i,p in enumerate(pages):
- with cols[i]:
-  if st.button(p,key='nav_'+p,use_container_width=True):st.session_state.page=p
-st.divider()
+if st.session_state.page=='Dashboard':
+    st.markdown('<div class="section-title">📊 Public Monitoring Dashboard</div>',unsafe_allow_html=True)
+    a,b,c,e=st.columns(4); a.metric('Selected Location',location); b.metric('Nearby Dams',len(near)); c.metric('Selected Dam',selected); r=risk(d['water_level'],d); e.metric('Current Risk',f'{icon(r)} {r}')
+    if current:
+        w=current['main']; c1,c2,c3,c4=st.columns(4); c1.metric('Temperature',f"{w['temp']:.1f} °C"); c2.metric('Rainfall (1h)',f'{rain_live:.1f} mm'); c3.metric('Humidity',f"{w['humidity']} %"); c4.metric('Condition',current['weather'][0]['description'].title()); st.caption('Weather data provided by OpenWeather.')
+    else: st.info('OpenWeather data unavailable. Configure OPENWEATHER_API_KEY in Streamlit Secrets.' if not weather_error else f'Weather service unavailable: {weather_error}')
+    st_folium(map_view(location,selected),height=500)
+    a,b,c,e=st.columns(4); a.metric('Water Level',f"{d['water_level']:.2f} m"); b.metric('Inflow',f"{d['inflow']:.0f} m³/s"); c.metric('Outflow',f"{d['outflow']:.0f} m³/s"); e.metric('Shutters Open',f"{d['open_shutters']} / {d['shutters']}")
+    st.info('Weather is live through OpenWeather. Reservoir parameters are internally simulated for the prototype and are designed to be replaceable by authorized official feeds.')
 
-loc=st.selectbox('📍 Select your location',list(LOCS),index=list(LOCS).index('Idukki'))
-near=nearby(loc)
-if not near:st.error('No prototype dams within 120 km.');st.stop()
-dam=st.selectbox('💧 Select a nearby dam',[x[0] for x in near])
-k=key();la,lo=LOCS[loc];w=weather(la,lo,k);f=forecast(la,lo,k);s=model(DAMS[dam],w,f)
+elif st.session_state.page=='Dam Monitoring':
+    st.markdown('<div class="section-title">💧 Dam Monitoring</div>',unsafe_allow_html=True)
+    a,b,c,e=st.columns(4); a.metric('Water Level',f"{d['water_level']:.2f} m"); b.metric('Inflow',f"{d['inflow']:.0f} m³/s"); c.metric('Outflow',f"{d['outflow']:.0f} m³/s"); e.metric('Risk',f"{icon(risk(d['water_level'],d))} {risk(d['water_level'],d)}")
+    st.markdown('### 🚪 Shutter Status'); cs=st.columns(min(d['shutters'],8))
+    for i in range(d['shutters']):
+        with cs[i]: st.markdown(f"<div class='glass' style='text-align:center;font-size:1.4rem'>{'🟦' if i<d['open_shutters'] else '⬜'}<br><span class='small-muted'>Gate {i+1}</span></div>",unsafe_allow_html=True)
+    times=pd.date_range(end=datetime.now(),periods=12,freq='h'); vals=np.linspace(d['water_level']-.7,d['water_level'],12)+.04*np.sin(np.arange(12)); fig=go.Figure(go.Scatter(x=times,y=vals,mode='lines+markers',name='Water level')); fig.add_hline(y=d['warning_level'],line_dash='dash',annotation_text='Warning'); fig.add_hline(y=d['critical_level'],line_dash='dash',annotation_text='Critical'); fig.update_layout(template='plotly_dark',height=380); st.plotly_chart(fig,use_container_width=True); st_folium(map_view(location,selected),height=450)
 
-c=st.columns(4);c[0].markdown('<span class="status">DAM TELEMETRY: SIMULATION</span>',unsafe_allow_html=True);c[1].markdown('<span class="live">WEATHER: LIVE API</span>' if w.get('ok') else '<span class="status">WEATHER: API UNAVAILABLE</span>',unsafe_allow_html=True);c[2].write(f'**Dam:** {dam}');c[3].write(f'**Risk:** {s["risk"]}')
+elif st.session_state.page=='Prediction':
+    st.markdown('<div class="section-title">📈 Water-Level Prediction</div>',unsafe_allow_html=True)
+    rains=[]
+    if forecast:
+        rains=[float(x.get('rain',{}).get('3h',0)) for x in forecast.get('list',[])[:8]]
+    rains=(rains+[rain_live]*8)[:8]
+    p=prediction(d,rains); final=p.iloc[-1]; a,b,c=st.columns(3); a.metric('Current Level',f"{d['water_level']:.2f} m"); b.metric('Predicted Level',f"{final.water_level:.2f} m"); c.metric('Predicted Risk',f"{icon(final.risk)} {final.risk}")
+    fig=go.Figure(go.Scatter(x=list(range(0,len(p)+1)),y=[d['water_level']]+p.water_level.tolist(),mode='lines+markers',name='Predicted')); fig.add_hline(y=d['warning_level'],line_dash='dash',annotation_text='Warning'); fig.add_hline(y=d['critical_level'],line_dash='dash',annotation_text='Critical'); fig.update_layout(template='plotly_dark',height=400,xaxis_title='Forecast step (3h)',yaxis_title='Water level (m)'); st.plotly_chart(fig,use_container_width=True)
+    st.dataframe(p,use_container_width=True,hide_index=True); st.info('Current prototype prediction is rule-based and mathematical. No dataset or machine-learning training model is used.')
 
-page=st.session_state.page
-if page=='Home':
- st.markdown('<div class="title">Public Flood Awareness Dashboard</div>',unsafe_allow_html=True);st.write('One integrated workflow: weather → simulated telemetry → water-balance model → prediction → risk → flood scenario → public safety.')
- a,b,c,d=st.columns(4);a.metric('Water Level',f'{s["h"]:.1f} m');b.metric('Inflow',f'{s["inflow"]:.0f} m³/s');c.metric('Outflow',f'{s["outflow"]:.0f} m³/s');d.metric('Rainfall',f'{s["rain"]:.1f} mm/h')
- l,r=st.columns([1.35,1]);
- with l:st.markdown('### 🗺️ Nearby dams');st_folium(dam_map(loc,dam),height=500,returned_objects=[])
- with r:
-  st.markdown('### 🌧️ Weather')
-  if w.get('ok'):x,y=st.columns(2);x.metric('Temperature',f'{w["temp"]:.1f} °C');x.metric('Humidity',f'{w["humidity"]:.0f}%');y.metric('Rainfall',f'{w["rain"]:.1f} mm/h');y.metric('Wind',f'{w["wind"]:.1f} m/s');st.caption('Weather data provided by OpenWeather.')
-  else:st.warning(w['error'])
-  st.markdown('### 🚦 Integrated assessment');st.write(safety(s['risk']));st.info('Reservoir telemetry is simulated in this prototype. It is not official live dam status.')
-elif page=='Dam Monitor':
- st.markdown('<div class="title">💧 Dam Monitor</div>',unsafe_allow_html=True);st.caption('Simulation Mode: telemetry responds to live weather inputs when available.')
- a,b,c,d,e=st.columns(5);a.metric('Water Level',f'{s["h"]:.2f} m');b.metric('Inflow',f'{s["inflow"]:.0f} m³/s');c.metric('Outflow',f'{s["outflow"]:.0f} m³/s');d.metric('Shutters Open',f'{s["op"]} / {s["sh"]}');e.metric('Rainfall',f'{s["rain"]:.1f} mm/h')
- l,r=st.columns([1.2,1]);
- with l:st.plotly_chart(level_chart(s),use_container_width=True)
- with r:st.dataframe(pd.DataFrame({'Parameter':['Water level','Inflow','Outflow','Rainfall','Shutters open','Shutter opening'],'Value':[f'{s["h"]:.2f} m',f'{s["inflow"]:.0f} m³/s',f'{s["outflow"]:.0f} m³/s',f'{s["rain"]:.1f} mm/h',f'{s["op"]}/{s["sh"]}',f'{s["opening"]:.1f}%']}),hide_index=True,use_container_width=True);st.info('The simulated telemetry layer can later be replaced by an authorized official API/data feed.')
-elif page=='Prediction':
- st.markdown('<div class="title">📈 Water-Level Prediction</div>',unsafe_allow_html=True);a,b,c=st.columns(3);a.metric('Current',f'{s["h"]:.2f} m');b.metric('1-hour estimate',f'{s["h1"]:.2f} m');c.metric('6-hour estimate',f'{s["h6"]:.2f} m');st.plotly_chart(level_chart(s),use_container_width=True)
- l,r=st.columns(2)
- with l:st.markdown('### 🌧️ Rainfall input');st.write(f'Current rainfall: **{s["rain"]:.1f} mm/h**');st.write(f'Next 24 h forecast used: **{s["next24"]:.1f} mm**')
- with r:st.markdown('### 🧮 Current model');st.latex(r'\Delta V=(Q_{in}-Q_{out})\Delta t');st.latex(r'\Delta h\approx\frac{\Delta V}{A}');st.latex(r'h_{t+1}=h_t+\frac{(Q_{in}-Q_{out})\Delta t}{A}');st.warning('Simplified prototype model; not an official rule curve or operational dam-control model.')
-elif page=='Flood Simulation':
- st.markdown('<div class="title">🌊 Flood Simulation</div>',unsafe_allow_html=True);st.write('Hypothetical dam-break scenario driven by the same integrated reservoir state. Simulation only.')
- a,b,c=st.columns(3);a.metric('Estimated Peak Flow',f'{s["peak"]:.0f} m³/s');b.metric('Estimated Arrival',f'{s["arrival"]:.0f} min');c.metric('Potential Exposure',f'{s["pop"]:,}')
- x=np.arange(13);y=s['peak']*np.exp(-((x-3)**2)/5.5);fig=go.Figure(go.Scatter(x=x,y=y,mode='lines+markers'));fig.update_layout(height=330,margin=dict(l=10,r=10,t=30,b=10),paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',xaxis_title='Hours',yaxis_title='Hypothetical discharge',font=dict(color='#d9f3ff'));st.plotly_chart(fig,use_container_width=True)
- fmap=folium.Map([s['lat'],s['lon']],zoom_start=9,tiles='OpenStreetMap');folium.Marker([s['lat'],s['lon']],tooltip=f'{dam} scenario origin',icon=folium.Icon(color='red',icon='tint',prefix='fa')).add_to(fmap)
- for i,(name,km) in enumerate([('Zone A',8),('Zone B',18),('Zone C',30)]):
-  folium.Circle([s['lat']-km/111,s['lon']+.015*(i+1)],radius=(i+1)*3500,color='red' if i==0 else 'orange',fill=True,fill_opacity=.12,popup=f'{name}: illustrative exposure zone').add_to(fmap)
- st_folium(fmap,height=500,returned_objects=[]);st.warning('SIMULATION ONLY — not a real flood forecast and not for evacuation decisions.')
-elif page=='Public Safety':
- st.markdown('<div class="title">🚨 Public Safety</div>',unsafe_allow_html=True);st.markdown(f'### Current prototype status: **{s["risk"]}**');st.write(safety(s['risk']))
- for q in ['Follow official disaster-management and local-authority instructions.','Move to safer/elevated locations when an official evacuation instruction is issued.','Avoid flooded roads, bridges, riverbanks and fast-moving water.','Do not cross floodwater on foot or by vehicle.','Keep emergency documents, medicines, water and contacts ready.','Official alerts always take priority over HYDROSCOPE.']:st.write('• '+q)
- st.info('HYDROSCOPE is a public-awareness prototype. It does not operate dam gates or issue legally authoritative evacuation orders.')
-elif page=='Flood Ready':
- st.markdown('<div class="title">🎮 Flood Ready — Safety Navigation Game</div>',unsafe_allow_html=True);st.write('Navigate the boat to the safe zone while avoiding flood debris. Keyboard, touch buttons and phone tilt are supported.')
- components.html('''<!doctype html><html><body style="margin:0;background:#071923;color:#eaf8ff;font-family:Arial;text-align:center"><div>🎮 Score: <span id=s>0</span> &nbsp; ❤️ <span id=l>3</span> &nbsp; <span id=m>Reach the green safe zone</span></div><canvas id=c width=900 height=500 style="width:100%;border-radius:18px;background:#073347;touch-action:none"></canvas><div><button onclick="K('ArrowLeft')">◀</button><button onclick="K('ArrowUp')">▲</button><button onclick="K('ArrowDown')">▼</button><button onclick="K('ArrowRight')">▶</button></div><small>WASD / arrows • touch • supported phones: tilt</small><script>
-const c=document.getElementById('c'),x=c.getContext('2d');let b={x:90,y:240,w:48,h:24},safe={x:820,y:90,r:42},ks={},score=0,lives=3,run=1,ds=[];for(let i=0;i<12;i++)ds.push({x:200+Math.random()*650,y:30+Math.random()*440,r:9+Math.random()*12,v:.5+Math.random()*1.5});function K(k){ks[k]=1;setTimeout(()=>ks[k]=0,180)}function hit(d){let nx=Math.max(b.x,Math.min(d.x,b.x+b.w)),ny=Math.max(b.y,Math.min(d.y,b.y+b.h));return (d.x-nx)**2+(d.y-ny)**2<d.r*d.r}function loop(){if(run){if(ks.ArrowLeft||ks.a)b.x-=4;if(ks.ArrowRight||ks.d)b.x+=4;if(ks.ArrowUp||ks.w)b.y-=4;if(ks.ArrowDown||ks.s)b.y+=4;b.x=Math.max(0,Math.min(850,b.x));b.y=Math.max(0,Math.min(476,b.y));ds.forEach(d=>{d.x-=d.v;if(d.x<0){d.x=900;d.y=20+Math.random()*460}if(hit(d)){lives--;b.x=90;b.y=240;document.getElementById('l').textContent=lives;if(lives<=0){run=0;document.getElementById('m').textContent='Stay away from hazardous water. Press R to restart.'}}});if(Math.hypot(b.x+24-safe.x,b.y+12-safe.y)<safe.r){score+=100;run=0;document.getElementById('s').textContent=score;document.getElementById('m').textContent='Safe! Follow official instructions in a real emergency.'}}x.clearRect(0,0,900,500);x.fillStyle='#073347';x.fillRect(0,0,900,500);for(let i=0;i<18;i++){x.strokeStyle='rgba(150,240,255,.1)';x.beginPath();x.moveTo(0,25+i*30);x.lineTo(900,25+i*30);x.stroke()}x.beginPath();x.arc(safe.x,safe.y,safe.r,0,7);x.strokeStyle='#63efb4';x.lineWidth=4;x.stroke();x.fillStyle='#63efb4';x.font='bold 15px Arial';x.fillText('SAFE',safe.x-18,safe.y+5);ds.forEach(d=>{x.fillStyle='#8b5a3c';x.beginPath();x.arc(d.x,d.y,d.r,0,7);x.fill()});x.fillStyle='#f4c95d';x.beginPath();x.moveTo(b.x,b.y);x.lineTo(b.x+b.w-8,b.y);x.lineTo(b.x+b.w,b.y+12);x.lineTo(b.x+b.w-8,b.y+b.h);x.lineTo(b.x,b.y+b.h);x.fill();requestAnimationFrame(loop)}loop();window.onkeydown=e=>{ks[e.key]=1;if(e.key.toLowerCase()=='r'){b={x:90,y:240,w:48,h:24};lives=3;score=0;run=1;document.getElementById('l').textContent=3;document.getElementById('s').textContent=0;document.getElementById('m').textContent='Reach the green safe zone'}};window.onkeyup=e=>ks[e.key]=0;window.ondeviceorientation=e=>{if(e.gamma<-10){ks.ArrowLeft=1;ks.ArrowRight=0}else if(e.gamma>10){ks.ArrowRight=1;ks.ArrowLeft=0}else{ks.ArrowLeft=0;ks.ArrowRight=0}};
-</script></body></html>''',height=610,scrolling=False)
+elif st.session_state.page=='Flood Simulation':
+    st.markdown('<div class="section-title">🌊 Hypothetical Flood Simulation</div>',unsafe_allow_html=True)
+    peak,arrival,pop,t,wave=flood_scenario(d); a,b,c=st.columns(3); a.metric('Estimated Peak Flow',f'{peak:.0f} m³/s'); b.metric('Estimated Arrival',f'{arrival:.0f} min'); c.metric('Potential Population',f'{pop:,}')
+    st.warning('Simplified hypothetical scenario for public awareness. It is not an operational emergency prediction or a validated engineering hydraulic model.')
+    fig=go.Figure(go.Scatter(x=t,y=wave,mode='lines',name='Simplified flood wave')); fig.update_layout(template='plotly_dark',height=380,xaxis_title='Time after hypothetical breach (min)',yaxis_title='Relative discharge estimate (m³/s)'); st.plotly_chart(fig,use_container_width=True)
+    st.markdown('### 🗺️ Potential Impact Zones');
+    for z in ['Immediate downstream low-lying areas','River-adjacent settlements','Downstream roads and bridges','Flood-prone residential areas']: st.write('• '+z)
+    st_folium(map_view(location,selected),height=430)
 
-st.markdown('<div class="footer">HYDROSCOPE is a public-awareness prototype. Weather data is provided by OpenWeather. Dam telemetry shown here is simulation data, not official live dam status. Always follow official disaster-management instructions.</div>',unsafe_allow_html=True)
+elif st.session_state.page=='Public Safety':
+    st.markdown('<div class="section-title">🆘 Public Safety & Flood Awareness</div>',unsafe_allow_html=True)
+    r=risk(d['water_level'],d); (st.error if r=='High' else st.warning if r=='Moderate' else st.success)(f'{icon(r)} {r.upper()} CONDITION — Follow official information and instructions.')
+    st.markdown("""<div class='glass'><b>Public Safety Checklist</b><br><br>• Keep emergency contacts accessible.<br>• Follow official evacuation instructions when issued.<br>• Avoid flooded roads, bridges and fast-flowing water.<br>• Keep essential documents, medicines and emergency supplies ready.<br>• Do not rely on HYDROSCOPE as a replacement for official warnings.</div>""",unsafe_allow_html=True)
+    st.markdown('### 🏛️ Official Information Sources'); st.write('• Kerala State Disaster Management Authority (KSDMA)'); st.write('• Central Water Commission (CWC)'); st.write('• Kerala Water Resources / Irrigation authorities'); st.write('• KSEB and other authorized dam/reservoir data providers'); st.info('HYDROSCOPE is a public information and flood-awareness platform. It does not operate dam gates, control reservoirs, or issue official evacuation orders.')
+
+else:
+    st.markdown('<div class="section-title">🎮 HYDRO CHALLENGE</div>',unsafe_allow_html=True)
+    st.write('Educational simulation showing how rainfall, inflow, reservoir level and preparedness interact.')
+    if st.session_state.game is None:
+        if st.button('▶️ Start Challenge'): st.session_state.game={'level':86.5,'rain':55.,'inflow':1400.,'outflow':500.,'score':0,'round':1}; st.session_state.game_msg=''; st.rerun()
+    else:
+        g=st.session_state.game; a,b,c,e=st.columns(4); a.metric('Round',g['round']); b.metric('Water Level',f"{g['level']:.1f} m"); c.metric('Inflow',f"{g['inflow']:.0f} m³/s"); e.metric('Rainfall',f"{g['rain']:.0f} mm")
+        st.markdown('### Choose an educational public-safety response'); x,y,z=st.columns(3)
+        action=None
+        with x:
+            if st.button('🟢 Continue Monitoring',use_container_width=True): action='monitor'
+        with y:
+            if st.button('🟠 Prepare Public Alert',use_container_width=True): action='alert'
+        with z:
+            if st.button('🔴 Escalate Emergency Readiness',use_container_width=True): action='emergency'
+        if action:
+            delta={'monitor':10,'alert':15,'emergency':20}[action]; release={'monitor':1.,'alert':1.1,'emergency':1.2}[action]; g['score']+=delta; g['outflow']*=release; g['rain']*=1.05 if g['round']%2==0 else .95; g['inflow']*=1+max(g['rain']-45,0)/500; g['level']=max(75,g['level']+np.clip(((g['inflow']-g['outflow'])*3600)/35e6,-.3,.3)); g['round']+=1; st.session_state.game_msg='Educational response applied; the simulated reservoir state has advanced.'; st.rerun()
+        if st.session_state.game_msg: st.info(st.session_state.game_msg)
+        if g['round']>6:
+            st.success(f"Challenge complete! Educational score: {g['score']}");
+            if st.button('🔄 Restart Challenge'): st.session_state.game=None; st.session_state.game_msg=''; st.rerun()
+        st.caption('Educational simulation only. It does not recommend real dam-gate operations and must not be used for emergency decisions.')
+
+st.markdown('<div class="footer">HYDROSCOPE • Public Dam Monitoring & Flood-Risk Awareness Prototype<br>Prototype reservoir values are simulated unless explicitly marked as live API data.</div>',unsafe_allow_html=True)

@@ -5,6 +5,3 @@ requests
 plotly
 folium
 streamlit-folium
-scikit-learn
-beautifulsoup4
-lxml
